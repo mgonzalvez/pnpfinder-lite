@@ -3,127 +3,36 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PnPfinder - Print and Play Games</title>
-    <link rel="stylesheet" href="css/style.css">
+    <title>PnPfinder</title>
+    <link rel="stylesheet" href="/css/style.css"> <!-- Link to your CSS file -->
 </head>
 <body>
 
     <header>
         <h1>PnPfinder</h1>
         <nav>
-            <ul>
-                <li><a href="index.html" class="active">Home</a></li>
-                <!-- Add links to about.html and contact.html if you create them -->
-            </ul>
+            <!-- Add navigation links if needed -->
         </nav>
     </header>
 
     <main>
         <div class="filter-bar">
-            <h2>Filters</h2>
-            <div class="filter-group">
-                <label for="price">Price:</label>
-                <div class="price-options">
-                    <button data-filter="free">Free</button>
-                    <button data-filter="paid">Paid</button>
-                    <button data-filter="name">Name Your Price</button>
-                </div>
-            </div>
-
-            <div class="filter-group">
-                <label for="players">Number of Players:</label>
-                <select id="players-select">
-                    <option value="">Any</option>
-                    <!-- Populate with player options based on your data -->
-                </select>
-            </div>
-
-            <div class="filter-group">
-                <label for="playtime">Playtime:</label>
-                <select id="playtime-select">
-                    <option value="">Any</option>
-                    <!-- Populate with playtime options based on your data -->
-                </select>
-            </div>
-
-            <div class="filter-group">
-                <label for="age">Age Range:</label>
-                <select id="age-select">
-                    <option value="">Any</option>
-                    <!-- Populate with age options based on your data -->
-                </select>
-            </div>
-
-            <div class="filter-group">
-                <label for="mechanic">Main Mechanism:</label>
-                <select id="mechanic-select">
-                    <option value="">Any</option>
-                    <!-- Populate with mechanism options based on your data -->
-                </select>
-            </div>
-
-            <div class="filter-group">
-                <label for="complexity">Complexity:</label>
-                <select id="complexity-select">
-                    <option value="">Any</option>
-                    <!-- Populate with complexity options based on your data -->
-                </select>
-            </div>
-
-            <div class="filter-group">
-                <label for="theme">Theme:</label>
-                <select id="theme-select">
-                    <option value="">Any</option>
-                    <!-- Populate with theme options based on your data -->
-                </select>
-            </div>
-
-             <div class="filter-group">
-                <label for="year">Release Year:</label>
-                <select id="year-select">
-                    <option value="">Any</option>
-                    <!-- Populate with year options based on your data -->
-                </select>
-            </div>
-
-             <div class="filter-group">
-                <label for="language">Languages:</label>
-                <select id="language-select">
-                    <option value="">Any</option>
-                    <!-- Populate with language options based on your data -->
-                </select>
-            </div>
-
-             <div class="filter-group">
-                <label for="curated">Curated List:</label>
-                <select id="curated-select">
-                    <option value="">Any</option>
-                    <!-- Populate with curated list options based on your data -->
-                </select>
-            </div>
-
+            <!-- Your filter elements will be dynamically added here -->
         </div>
 
-        <div class="game-list">
-            <div class="game-card" data-url="game/1">
-                <h2>Game Title 1</h2>
-                <p>Short description of the game.</p>
-                <p>Players: 2 | Playtime: 45 min | Price: Paid</p>
-                <p>Mechanic: Engine Building</p>
-                <a href="game/1">Download</a>
-            </div>
-
-            <!-- Add more game cards here based on your data -->
+        <div id="game-grid" class="game-grid">
+            <!-- Games will be dynamically added here -->
         </div>
 
-        <div class="pagination">
-            <!-- Pagination controls will be added dynamically -->
+        <div id="pagination" class="pagination">
+            <!-- Pagination elements will be dynamically added here -->
         </div>
     </main>
 
     <footer>
-        <p>&copy; 2025 PnPfinder - All rights reserved.</p>
+        <p>&copy; 2024 PnPfinder</p>
     </footer>
 
+    <script src="/js/script.js"></script>
 </body>
 </html>
