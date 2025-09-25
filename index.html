@@ -33,6 +33,17 @@
         <button id="viewCards" class="toggle active" aria-pressed="true" title="Card view">Cards</button>
         <button id="viewList" class="toggle" aria-pressed="false" title="List view">List</button>
       </div>
+
+      <!-- Sort control -->
+      <div class="sort">
+        <label for="sortBy" class="sr-only">Sort by</label>
+        <select id="sortBy" aria-label="Sort by">
+          <option value="relevance" selected>Relevance</option>
+          <option value="newest">Newest</option>
+          <option value="az">A–Z</option>
+          <option value="release-asc">Release Year (oldest)</option>
+        </select>
+      </div>
     </div>
   </header>
 
