@@ -1,4 +1,4 @@
-/* PnPFinder — resilient CSV loader + UI (reduced filters + sorting + ellipses pager) */
+/* PnPFinder — CSV-order relevance + reduced filters + sorting + ellipses pager */
 
 const CSV_URL = "/data/games.csv";
 const PAGE_SIZE = 25;
@@ -57,7 +57,7 @@ const SORT_DEFAULT = "relevance"; // relevance | newest | az | release-asc
 let sortBy = localStorage.getItem("sortBy") || SORT_DEFAULT;
 
 /* State */
-let rawRows = [];
+let rawRows = [];       // all rows (each with a stable _idx)
 let filteredRows = [];
 let currentPage = 1;
 let currentView = localStorage.getItem("viewMode") || "cards";
@@ -250,32 +250,12 @@ function rowMatchesFilters(row){
 
 function safeLower(s){ return String(s || "").toLowerCase(); }
 
-function scoreRelevance(row, query){
-  const title = safeLower(row["Game Title"]);
-  const year = parseNumber(row["Release Year"]) ?? 0;
-
-  if (!query) {
-    // light heuristic so “Relevance” is still sensible without a query
-    return (year * 0.001) + (title ? 0 : -1);
-  }
-
-  const q = query.toLowerCase();
-  let score = 0;
-
-  if (title === q) score += 100;
-  if (title.startsWith(q)) score += 40;
-  if (title.includes(q)) score += 20;
-
-  for (const f of SEARCH_FIELDS) {
-    const val = safeLower(row[f]);
-    if (val && val.includes(q)) score += 5;
-  }
-
-  score += (year || 0) * 0.01;
-  return score;
-}
-
 function sortRows(rows){
+  // Relevance = CSV order via _idx
+  if (sortBy === "relevance") {
+    return rows.slice().sort((a,b) => (a._idx ?? 0) - (b._idx ?? 0));
+  }
+
   const byTitle = (a, b) => safeLower(a["Game Title"]).localeCompare(safeLower(b["Game Title"]), undefined, {numeric:true, sensitivity:"base"});
   const byYearDesc = (a, b) => (parseNumber(b["Release Year"]) ?? -Infinity) - (parseNumber(a["Release Year"]) ?? -Infinity);
   const byYearAsc  = (a, b) => (parseNumber(a["Release Year"]) ??  Infinity) - (parseNumber(b["Release Year"]) ??  Infinity);
@@ -295,19 +275,14 @@ function sortRows(rows){
       return d !== 0 ? d : byTitle(a,b);
     });
   }
-  // relevance default
-  return rows.slice().sort((a,b) => {
-    const sa = scoreRelevance(a, searchTerm);
-    const sb = scoreRelevance(b, searchTerm);
-    if (sb !== sa) return sb - sa;
-    return byTitle(a,b);
-  });
+
+  // Fallback: CSV order
+  return rows.slice().sort((a,b) => (a._idx ?? 0) - (b._idx ?? 0));
 }
 
 /* ---------- Pagination UI (ellipses + page count) ---------- */
 
 function renderPager(total, totalPages) {
-  // Meta line
   resultsMetaEl.textContent =
     `${total.toLocaleString()} game${total === 1 ? "" : "s"} • Page ${currentPage} of ${totalPages}`;
 
@@ -337,29 +312,23 @@ function renderPager(total, totalPages) {
   pageNumsEl.innerHTML = "";
 
   if (totalPages >= 1) {
-    // First page
     pageNumsEl.appendChild(makePageBtn(1, { current: currentPage === 1 }));
 
-    // Compute middle window around current page
     const windowSize = 2;
     const start = Math.max(2, currentPage - windowSize);
     const end = Math.min(totalPages - 1, currentPage + windowSize);
 
     if (start > 2) pageNumsEl.appendChild(makeEllipsis());
-
     for (let p = start; p <= end; p++) {
       pageNumsEl.appendChild(makePageBtn(p, { current: p === currentPage }));
     }
-
     if (end < totalPages - 1) pageNumsEl.appendChild(makeEllipsis());
 
-    // Last page (if more than one)
     if (totalPages >= 2) {
       pageNumsEl.appendChild(makePageBtn(totalPages, { current: currentPage === totalPages }));
     }
   }
 
-  // Prev/Next enable/disable
   const prevBtn = pagerEl.querySelector('[data-page="prev"]');
   const nextBtn = pagerEl.querySelector('[data-page="next"]');
   if (prevBtn) prevBtn.disabled = currentPage <= 1;
@@ -431,7 +400,7 @@ function applyFiltersNow(showBusy=true){
   // 1) filter
   filteredRows = rawRows.filter(rowMatchesFilters);
 
-  // 2) sort
+  // 2) sort (relevance = CSV order via _idx)
   const sorted = sortRows(filteredRows);
 
   // 3) paginate
@@ -487,7 +456,12 @@ function setView(mode){
   const csvHeaders = parsed.meta.fields || [];
   const headerMap = buildHeaderMap(csvHeaders);
 
-  rawRows = parsed.data.map(row => remapRow(row, headerMap));
+  // Build rows and stamp stable CSV order index
+  rawRows = parsed.data.map((row, i) => {
+    const obj = remapRow(row, headerMap);
+    obj._idx = i; // <— preserve original CSV order
+    return obj;
+  });
 
   buildFiltersUI(rawRows);
   applyFiltersNow();
