@@ -3,36 +3,57 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PnPfinder</title>
-    <link rel="stylesheet" href="/css/style.css"> <!-- Link to your CSS file -->
+    <title>PnPfinder - Print and Play Games</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/dark.css" media="(prefers-color-scheme: dark)">
 </head>
 <body>
-
     <header>
-        <h1>PnPfinder</h1>
-        <nav>
-            <!-- Add navigation links if needed -->
-        </nav>
+        <div class="container">
+            <h1>PnPfinder</h1>
+            <div class="search-filters">
+                <input type="text" id="search-input" placeholder="Search games...">
+            </div>
+            <div class="filter-bar">
+                <h2>Filters</h2>
+                <div class="filter-group">
+                    <label for="price-filter">Price:</label>
+                    <select id="price-filter">
+                        <option value="">All</option>
+                        <option value="free">Free</option>
+                        <option value="paid">Paid</option>
+                        <option value="name">Name your Price</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="players-filter">Number of Players:</label>
+                    <select id="players-filter">
+                        <option value="">Any</option>
+                        <option value="1">1</option>
+                        <option value="2">2</option>
+                        <!-- Add more player options as needed -->
+                    </select>
+                </div>
+                <!-- Add more filter groups here -->
+            </div>
+        </div>
     </header>
 
     <main>
-        <div class="filter-bar">
-            <!-- Your filter elements will be dynamically added here -->
-        </div>
+        <div class="container">
+            <div class="view-toggle">
+                <button id="grid-view-btn" class="active">Grid View</button>
+                <button id="list-view-btn">List View</button>
+            </div>
 
-        <div id="game-grid" class="game-grid">
-            <!-- Games will be dynamically added here -->
-        </div>
+            <div class="game-grid" id="game-grid">
+                <!-- Game cards will be dynamically added here -->
+            </div>
 
-        <div id="pagination" class="pagination">
-            <!-- Pagination elements will be dynamically added here -->
+            <div class="pagination">
+                <!-- Pagination controls will be dynamically added here -->
+            </div>
         </div>
     </main>
-
-    <footer>
-        <p>&copy; 2024 PnPfinder</p>
-    </footer>
-
-    <script src="/js/script.js"></script>
 </body>
 </html>
