@@ -60,7 +60,7 @@ body {
 .brand .brand-link:hover { text-decoration: underline; }
 .brand .tagline { margin: .25rem 0 0; color: var(--muted); font-size: .95rem; }
 
-/* Top navigation (Games / Tutorials) */
+/* Top navigation (Games / Tutorials / Resources) */
 .top-nav {
   margin-top: .5rem;
   display: flex;
@@ -88,12 +88,13 @@ body {
   align-items: center;
 }
 
-/* Search */
+/* Search (with custom clear button) */
+.search { position: relative; }
 .search input {
-  appearance: none;
+  appearance: none;              /* hide inconsistent native clear buttons */
   border: 1px solid var(--border);
   border-radius: 10px;
-  padding: .65rem .85rem;
+  padding: .65rem 2.4rem .65rem .85rem; /* extra right padding for clear button */
   min-width: 280px;
   background: var(--bg-elev);
   color: var(--text);
@@ -101,6 +102,27 @@ body {
 }
 .search input::placeholder { color: color-mix(in srgb, var(--muted) 85%, transparent); }
 .search input:focus { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+/* Clear button shown inside the search field */
+.search .clear-btn {
+  position: absolute;
+  right: .5rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 18px;
+  line-height: 1;
+  padding: 0;
+  cursor: pointer;
+  display: none;                /* toggled via JS */
+}
+.search .clear-btn:hover { color: var(--text); background: color-mix(in srgb, var(--bg) 60%, transparent); }
+.search .clear-btn:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 
 /* View + Theme toggles share styling */
 .view-toggle .toggle, .theme .toggle {

@@ -1,6 +1,7 @@
 /* PnPFinder — Tutorials page
-   - Cards/List views, search, sort, pager, images, theme toggle
-   - NEW: Component filter (dropdown) with live update + Clear/Apply
+   - Cards/List, search, sort, pager, images, theme toggle
+   - Component filter (dropdown) with live update + Clear/Apply
+   - Search clear button
 */
 
 const CSV_URL = "/data/tutorials.csv";
@@ -49,6 +50,31 @@ function initThemeToggle() {
   });
 }
 
+/* Search clear button */
+function installClearButton(inputEl) {
+  if (!inputEl) return;
+  const wrap = inputEl.closest(".search") || inputEl.parentElement;
+  if (!wrap) return;
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "clear-btn";
+  btn.setAttribute("aria-label", "Clear search");
+  btn.innerHTML = "×";
+
+  const toggle = () => { btn.style.display = inputEl.value.trim() ? "inline-flex" : "none"; };
+  inputEl.addEventListener("input", toggle);
+  inputEl.addEventListener("keyup", (e) => { if (e.key === "Escape") { btn.click(); e.stopPropagation(); } });
+
+  btn.addEventListener("click", () => {
+    inputEl.value = "";
+    inputEl.dispatchEvent(new Event("input", { bubbles: true }));
+    inputEl.focus();
+  });
+
+  wrap.appendChild(btn);
+  toggle();
+}
+
 /* Elements */
 const cardsEl = $("#cards");
 const pagerEl = $("#pager");
@@ -78,7 +104,7 @@ function debounce(fn, ms=250){ let t; return (...a)=>{ clearTimeout(t); t=setTim
 function normalizeStr(v){ return (v ?? "").toString().trim(); }
 function safeLower(s){ return String(s || "").toLowerCase(); }
 
-/* Image helpers (reuse from games) */
+/* Image helpers */
 function firstUrlLike(raw) {
   if (!raw) return "";
   const parts = String(raw).split(MULTIVALUE_SEP).map(s=>s.trim().replace(/^['"]|['"]$/g,""));
@@ -342,7 +368,7 @@ function renderCards(rows){
   cardsEl.appendChild(frag);
 }
 
-/* Apply (filters + search + sort + paginate) */
+/* Apply */
 function applyNow(showBusy=true){
   if (showBusy) mainEl.setAttribute("aria-busy","true");
 
@@ -357,7 +383,7 @@ function applyNow(showBusy=true){
   if (searchTerm){
     const q = searchTerm.toLowerCase();
     rows = rows.filter(r =>
-      SEARCH_FIELDS.some(f => String(r[f]||"").toLowerCase().includes(q))
+      ["Component","Title","Creator","Description"].some(f => String(r[f]||"").toLowerCase().includes(q))
     );
   }
 
@@ -390,16 +416,20 @@ function setView(mode){
 
 /* Boot */
 (async function init(){
-  $("#year").textContent = new Date().getFullYear();
+  document.getElementById("year").textContent = new Date().getFullYear();
   initThemeToggle();
 
+  // Search field + clear button
+  installClearButton(qEl);
+  const debounced = debounce(handleSearch, 220);
+  qEl.addEventListener("input", debounced);
+
+  // View toggle
   viewCardsBtn.addEventListener("click", ()=>setView("cards"));
   viewListBtn.addEventListener("click", ()=>setView("list"));
   setView(currentView==="list" ? "list" : "cards");
 
-  const debounced = debounce(()=>{ searchTerm=qEl.value.trim(); currentPage=1; applyNow(); }, 220);
-  qEl.addEventListener("input", debounced);
-
+  // Sort
   if (sortEl){
     sortEl.value = sortBy;
     sortEl.addEventListener("change", ()=>{

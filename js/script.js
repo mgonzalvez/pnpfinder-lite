@@ -1,4 +1,4 @@
-/* PnPFinder — CSV-order relevance + reduced filters + sorting + ellipses pager + images + details link + theme toggle */
+/* PnPFinder — Games page (CSV-order relevance, filters, sorting, ellipses pager, images, details link, theme toggle, search clear button) */
 
 const CSV_URL = "/data/games.csv";
 const PAGE_SIZE = 25;
@@ -29,7 +29,7 @@ const FILTER_COLUMNS = [
 
 /* Canonicalization helpers for robust header matching */
 const toKey = (s) => String(s ?? "")
-  .replace(/^\uFEFF/, "")            // strip BOM
+  .replace(/^\uFEFF/, "")
   .normalize("NFKC")
   .trim()
   .toLowerCase()
@@ -78,6 +78,31 @@ function initThemeToggle() {
     const next = document.documentElement.getAttribute("data-theme") === "light" ? "dark" : "light";
     setTheme(next, btn);
   });
+}
+
+/* Search clear button */
+function installClearButton(inputEl) {
+  if (!inputEl) return;
+  const wrap = inputEl.closest(".search") || inputEl.parentElement;
+  if (!wrap) return;
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "clear-btn";
+  btn.setAttribute("aria-label", "Clear search");
+  btn.innerHTML = "×";
+
+  const toggle = () => { btn.style.display = inputEl.value.trim() ? "inline-flex" : "none"; };
+  inputEl.addEventListener("input", toggle);
+  inputEl.addEventListener("keyup", (e) => { if (e.key === "Escape") { btn.click(); e.stopPropagation(); } });
+
+  btn.addEventListener("click", () => {
+    inputEl.value = "";
+    inputEl.dispatchEvent(new Event("input", { bubbles: true }));
+    inputEl.focus();
+  });
+
+  wrap.appendChild(btn);
+  toggle();
 }
 
 /* State */
@@ -479,10 +504,10 @@ function renderCards(rows){
 
       body.append(header);
 
-      if (desc && desc.textContent.trim()) body.append(desc);     // short description just under header
-      if (meta && meta.childElementCount) body.append(meta);       // badges next
+      if (desc && desc.textContent.trim()) body.append(desc);
+      if (meta && meta.childElementCount) body.append(meta);
       if (links && links.childElementCount) {
-        links.classList.add("list-actions");                       // download at the bottom
+        links.classList.add("list-actions");
         body.append(links);
       }
 
@@ -531,16 +556,20 @@ function setView(mode){
 
 /* ---------- Init ---------- */
 (async function init(){
-  $("#year").textContent=new Date().getFullYear();
+  document.getElementById("year").textContent=new Date().getFullYear();
 
   initThemeToggle();
 
+  // Search field and clear button
+  installClearButton(qEl);
+  qEl.addEventListener("input", handleSearch);
+
+  // View toggles
   viewCardsBtn.addEventListener("click",()=>setView("cards"));
   viewListBtn.addEventListener("click",()=>setView("list"));
   setView(currentView==="list" ? "list" : "cards");
 
-  qEl.addEventListener("input", handleSearch);
-
+  // Sort control
   if (sortEl) {
     sortEl.value = sortBy;
     sortEl.addEventListener("change", () => {
@@ -551,6 +580,7 @@ function setView(mode){
     });
   }
 
+  // Load CSV
   const csvText = await fetch(CSV_URL).then(r=>r.text());
   const parsed = Papa.parse(csvText, {
     header: true,

@@ -1,7 +1,7 @@
 /* PnPFinder — Resources page
-   - Cards/List views, search, sort, pager, images, theme toggle
+   - Cards/List, search, sort, pager, images, theme toggle
    - Category filter (dropdown) with live update + Clear/Apply
-   - Robust header aliasing + safer image URL normalization
+   - Robust header aliasing + search clear button
 */
 
 const CSV_URL = "/data/resources.csv";
@@ -50,6 +50,31 @@ function initThemeToggle() {
   });
 }
 
+/* Search clear button */
+function installClearButton(inputEl) {
+  if (!inputEl) return;
+  const wrap = inputEl.closest(".search") || inputEl.parentElement;
+  if (!wrap) return;
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "clear-btn";
+  btn.setAttribute("aria-label", "Clear search");
+  btn.innerHTML = "×";
+
+  const toggle = () => { btn.style.display = inputEl.value.trim() ? "inline-flex" : "none"; };
+  inputEl.addEventListener("input", toggle);
+  inputEl.addEventListener("keyup", (e) => { if (e.key === "Escape") { btn.click(); e.stopPropagation(); } });
+
+  btn.addEventListener("click", () => {
+    inputEl.value = "";
+    inputEl.dispatchEvent(new Event("input", { bubbles: true }));
+    inputEl.focus();
+  });
+
+  wrap.appendChild(btn);
+  toggle();
+}
+
 /* Elements */
 const cardsEl = $("#cards");
 const pagerEl = $("#pager");
@@ -79,7 +104,7 @@ function debounce(fn, ms=250){ let t; return (...a)=>{ clearTimeout(t); t=setTim
 function normalizeStr(v){ return (v ?? "").toString().trim(); }
 function safeLower(s){ return String(s || "").toLowerCase(); }
 
-/* Image helpers (aligned with other pages) */
+/* Image helpers */
 function firstUrlLike(raw) {
   if (!raw) return "";
   const parts = String(raw).split(MULTIVALUE_SEP).map(s=>s.trim().replace(/^['"]|['"]$/g,""));
@@ -90,15 +115,10 @@ function firstUrlLike(raw) {
 function normalizeImageHost(url) {
   if (!url) return "";
   if (url.startsWith("http://")) url = "https://" + url.slice(7);
-
-  // Google Drive "file/d/<id>/" → direct view
   const g = url.match(/drive\.google\.com\/file\/d\/([^/]+)\//i);
   if (g) return `https://drive.google.com/uc?export=view&id=${g[1]}`;
-
-  // Dropbox share → direct
   if (/^https:\/\/www\.dropbox\.com\//i.test(url)) {
-    url = url.replace("www.dropbox.com", "dl.dropboxusercontent.com");
-    url = url.replace(/[?&]dl=\d/, "");
+    url = url.replace("www.dropbox.com", "dl.dropboxusercontent.com").replace(/[?&]dl=\d/, "");
   }
   return url;
 }
@@ -115,20 +135,15 @@ function buildHeaderMap(csvHeaders){
   for (const h of csvHeaders){
     const original = (h ?? "");
     const k = toKey(original);
-
-    // Skip empty / unnamed columns
-    if (!k) continue;
-
-    // Official exact match
+    if (!k) continue; // skip unnamed/empty
     if (NAME_BY_OFFICIAL_KEY.has(k)) { map.set(k, NAME_BY_OFFICIAL_KEY.get(k)); continue; }
 
-    // Aliases
+    // Common aliases
     if (k === "resourcecategory") { map.set(k, "Category"); continue; }
     if (k === "url" || k === "website" || k === "weblink") { map.set(k, "Link"); continue; }
     if (k === "img" || k === "imageurl" || k === "thumbnail" || k === "thumb" || k === "cover") { map.set(k, "Image"); continue; }
     if (k === "author" || k === "channel" || k === "by") { map.set(k, "Creator"); continue; }
 
-    // Otherwise pass through
     map.set(k, original);
   }
   return map;
@@ -274,7 +289,6 @@ function renderCards(rows){
   cardsEl.innerHTML="";
 
   if (!rows.length) {
-    // Graceful empty-state (keeps layout consistent)
     const p = document.createElement("p");
     p.className = "results-meta";
     p.textContent = "No resources match your current filters/search.";
@@ -418,16 +432,20 @@ function setView(mode){
 
 /* Boot */
 (async function init(){
-  $("#year").textContent = new Date().getFullYear();
+  document.getElementById("year").textContent = new Date().getFullYear();
   initThemeToggle();
 
+  // Search field + clear button
+  installClearButton(qEl);
+  const debounced = debounce(()=>{ searchTerm=qEl.value.trim(); currentPage=1; applyNow(); }, 220);
+  qEl.addEventListener("input", debounced);
+
+  // View toggles
   viewCardsBtn.addEventListener("click", ()=>setView("cards"));
   viewListBtn.addEventListener("click", ()=>setView("list"));
   setView(currentView==="list" ? "list" : "cards");
 
-  const debounced = debounce(()=>{ searchTerm=qEl.value.trim(); currentPage=1; applyNow(); }, 220);
-  qEl.addEventListener("input", debounced);
-
+  // Sort
   if (sortEl){
     sortEl.value = sortBy;
     sortEl.addEventListener("change", ()=>{
