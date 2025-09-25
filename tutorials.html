@@ -49,7 +49,21 @@
   </header>
 
   <main id="main" class="wrap" role="main" aria-busy="true">
-    <!-- No filters here by design -->
+    <!-- NEW: Filters (Component) -->
+    <details class="filters" open>
+      <summary>Filters</summary>
+      <form id="filtersForm">
+        <div id="filtersGrid" class="filters-grid" aria-live="polite">
+          <!-- Component dropdown is injected by tutorials.js -->
+        </div>
+
+        <div class="filter-actions">
+          <button type="button" id="clearFilters" class="secondary">Clear</button>
+          <button type="submit" id="applyFilters" class="primary">Apply</button>
+        </div>
+      </form>
+    </details>
+
     <div id="resultsMeta" class="results-meta" aria-live="polite"></div>
 
     <section id="cards" class="cards" role="list"></section>

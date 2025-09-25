@@ -1,4 +1,7 @@
-/* PnPFinder — Tutorials page (cards/list, search, sort, pager, images, theme toggle) */
+/* PnPFinder — Tutorials page
+   - Cards/List views, search, sort, pager, images, theme toggle
+   - NEW: Component filter (dropdown) with live update + Clear/Apply
+*/
 
 const CSV_URL = "/data/tutorials.csv";
 const PAGE_SIZE = 25;
@@ -56,6 +59,10 @@ const viewCardsBtn = $("#viewCards");
 const viewListBtn = $("#viewList");
 const mainEl = $("#main");
 const sortEl = $("#sortBy");
+const filtersGridEl = $("#filtersGrid");
+const filtersForm = $("#filtersForm");
+const clearBtn = $("#clearFilters");
+const applyBtn = $("#applyFilters");
 
 /* State */
 let rawRows = [];
@@ -64,6 +71,7 @@ let currentPage = 1;
 let currentView = localStorage.getItem("tutorials:viewMode") || "cards";
 let searchTerm = "";
 let sortBy = localStorage.getItem("tutorials:sortBy") || "relevance"; // relevance | az | creator
+let activeComponent = ""; // new filter
 
 /* Helpers */
 function debounce(fn, ms=250){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a),ms); }; }
@@ -177,6 +185,67 @@ function renderPager(total, totalPages) {
   if (next) next.onclick = ()=>{ if (currentPage<totalPages){ currentPage++; applyNow(false); window.scrollTo({top:0,behavior:"smooth"});} };
 }
 
+/* ===== NEW: Filters (Component) ===== */
+
+function collectUniqueComponents(rows){
+  const set = new Set();
+  for (const r of rows){
+    const v = normalizeStr(r["Component"]);
+    if (v) set.add(v);
+  }
+  return [...set].sort((a,b)=>a.localeCompare(b, undefined, {numeric:true, sensitivity:"base"}));
+}
+
+function createSelect(id, labelText, options){
+  const wrap=document.createElement("div"); wrap.className="select";
+  const label=document.createElement("label"); label.setAttribute("for", id); label.textContent=labelText;
+  const select=document.createElement("select"); select.id=id;
+
+  const any=document.createElement("option"); any.value=""; any.textContent="Any"; select.appendChild(any);
+  for (const v of options){ const o=document.createElement("option"); o.value=v; o.textContent=v; select.appendChild(o); }
+
+  wrap.append(label, select);
+  return { wrap, select };
+}
+
+function buildFiltersUI(rows){
+  filtersGridEl.innerHTML = "";
+
+  const components = collectUniqueComponents(rows);
+  const { wrap, select } = createSelect("componentFilter", "Component", components);
+  filtersGridEl.appendChild(wrap);
+
+  // restore persisted selection (optional)
+  const saved = localStorage.getItem("tutorials:component") || "";
+  activeComponent = saved;
+  select.value = saved;
+
+  // live update
+  select.addEventListener("change", () => {
+    activeComponent = select.value;
+    localStorage.setItem("tutorials:component", activeComponent);
+    currentPage = 1;
+    applyNow();
+  });
+
+  // Clear / Apply
+  clearBtn.addEventListener("click", () => {
+    activeComponent = "";
+    localStorage.removeItem("tutorials:component");
+    select.value = "";
+    currentPage = 1;
+    applyNow();
+  });
+
+  filtersForm.addEventListener("submit", (e) => {
+    e.preventDefault();
+    activeComponent = select.value;
+    localStorage.setItem("tutorials:component", activeComponent);
+    currentPage = 1;
+    applyNow();
+  });
+}
+
 /* Render */
 function badge(text){ const b=document.createElement("span"); b.className="badge"; b.textContent=text; return b; }
 
@@ -273,23 +342,32 @@ function renderCards(rows){
   cardsEl.appendChild(frag);
 }
 
-/* Apply */
+/* Apply (filters + search + sort + paginate) */
 function applyNow(showBusy=true){
   if (showBusy) mainEl.setAttribute("aria-busy","true");
 
-  // Search only (no filters on tutorials page)
-  if (searchTerm){
-    const q = searchTerm.toLowerCase();
-    filteredRows = rawRows.filter(r =>
-      SEARCH_FIELDS.some(f => String(r[f]||"").toLowerCase().includes(q))
-    );
-  } else {
-    filteredRows = rawRows.slice();
+  // 1) Filter by Component (exact match)
+  let rows = rawRows;
+  if (activeComponent) {
+    const target = activeComponent.toLowerCase();
+    rows = rows.filter(r => normalizeStr(r["Component"]).toLowerCase() === target);
   }
 
-  const sorted = sortRows(filteredRows);
+  // 2) Search (on Component, Title, Creator, Description)
+  if (searchTerm){
+    const q = searchTerm.toLowerCase();
+    rows = rows.filter(r =>
+      SEARCH_FIELDS.some(f => String(r[f]||"").toLowerCase().includes(q))
+    );
+  }
+
+  // 3) Sort
+  const sorted = sortRows(rows);
+
+  // 4) Paginate
   const { total, totalPages, pageRows } = paginate(sorted);
 
+  // 5) Render
   renderCards(pageRows);
   renderPager(total, totalPages);
 
@@ -319,7 +397,7 @@ function setView(mode){
   viewListBtn.addEventListener("click", ()=>setView("list"));
   setView(currentView==="list" ? "list" : "cards");
 
-  const debounced = debounce(handleSearch, 220);
+  const debounced = debounce(()=>{ searchTerm=qEl.value.trim(); currentPage=1; applyNow(); }, 220);
   qEl.addEventListener("input", debounced);
 
   if (sortEl){
@@ -349,5 +427,7 @@ function setView(mode){
     return obj;
   });
 
+  // Build Component filter UI and render
+  buildFiltersUI(rawRows);
   applyNow();
 })();
