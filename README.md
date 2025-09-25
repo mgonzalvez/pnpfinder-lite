@@ -260,5 +260,5 @@ Any static host works:
 ---
 
 **License**
-Proprietary and confidential. © 2025 Your Name or Company. All rights reserved.
+Proprietary and confidential. © 2025 Martin Gonzalvez. All rights reserved.
 No public license is granted. Contact help@pnpfinder.com for permissions.
