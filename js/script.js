@@ -1,4 +1,4 @@
-/* PnPFinder — CSV-order relevance + reduced filters + sorting + ellipses pager + images + details link */
+/* PnPFinder — CSV-order relevance + reduced filters + sorting + ellipses pager + images + details link + theme toggle */
 
 const CSV_URL = "/data/games.csv";
 const PAGE_SIZE = 25;
@@ -55,6 +55,30 @@ const FREEPAID_FIELD = "Free or Paid";
 /* Sorting */
 const SORT_DEFAULT = "relevance"; // relevance | newest | az | release-asc
 let sortBy = localStorage.getItem("sortBy") || SORT_DEFAULT;
+
+/* Theme */
+const THEME_KEY = "theme";
+function setTheme(theme, buttonEl) {
+  const t = theme === "light" ? "light" : "dark";
+  document.documentElement.setAttribute("data-theme", t);
+  localStorage.setItem(THEME_KEY, t);
+  if (buttonEl) {
+    const isLight = t === "light";
+    buttonEl.textContent = isLight ? "Light" : "Dark";
+    buttonEl.title = isLight ? "Switch to dark mode" : "Switch to light mode";
+    buttonEl.setAttribute("aria-pressed", String(isLight));
+  }
+}
+function initThemeToggle() {
+  const btn = document.getElementById("themeToggle");
+  if (!btn) return;
+  const saved = localStorage.getItem(THEME_KEY) || "dark"; // default dark
+  setTheme(saved, btn);
+  btn.addEventListener("click", () => {
+    const next = document.documentElement.getAttribute("data-theme") === "light" ? "dark" : "light";
+    setTheme(next, btn);
+  });
+}
 
 /* State */
 let rawRows = [];       // all rows (each with a stable _idx)
@@ -442,30 +466,28 @@ function renderCards(rows){
     if (dl1) links.appendChild(linkBtn(dl1, "Download"));
     if (dl2) links.appendChild(linkBtn(dl2, "Alt link"));
 
-   if (asList) {
-  if (thumbWrap) li.append(thumbWrap);
+    if (asList) {
+      if (thumbWrap) li.append(thumbWrap);
 
-  // right-side content column
-  const body = document.createElement("div");
-  body.className = "list-body";
+      // right-side content column
+      const body = document.createElement("div");
+      body.className = "list-body";
 
-  const header = document.createElement("div");
-  header.className = "list-header";
-  header.append(h, subtitle);
+      const header = document.createElement("div");
+      header.className = "list-header";
+      header.append(h, subtitle);
 
-  body.append(header);
+      body.append(header);
 
-  if (desc && desc.textContent.trim()) body.append(desc);     // short description just under header
-  if (meta && meta.childElementCount) body.append(meta);       // badges next
-  if (links && links.childElementCount) {
-    links.classList.add("list-actions");                       // download at the bottom
-    body.append(links);
-  }
+      if (desc && desc.textContent.trim()) body.append(desc);     // short description just under header
+      if (meta && meta.childElementCount) body.append(meta);       // badges next
+      if (links && links.childElementCount) {
+        links.classList.add("list-actions");                       // download at the bottom
+        body.append(links);
+      }
 
-  li.append(body);
-} else {
-  // (card view unchanged)
-
+      li.append(body);
+    } else {
       if (thumbWrap) li.append(thumbWrap);
       li.append(h, subtitle, desc, meta, links);
     }
@@ -510,6 +532,8 @@ function setView(mode){
 /* ---------- Init ---------- */
 (async function init(){
   $("#year").textContent=new Date().getFullYear();
+
+  initThemeToggle();
 
   viewCardsBtn.addEventListener("click",()=>setView("cards"));
   viewListBtn.addEventListener("click",()=>setView("list"));

@@ -1,4 +1,4 @@
-/* PnPFinder — Game Details page (image on top; meta below; overview uses "Game Description") */
+/* PnPFinder — Game Details page (image on top; meta below; overview uses "Long Description"/alias; theme toggle) */
 
 const CSV_URL = "/data/games.csv";
 
@@ -22,6 +22,30 @@ const COLUMNS = [
 
 const OFFICIAL_KEY_BY_NAME = new Map(COLUMNS.map(name => [name, toKey(name)]));
 const NAME_BY_OFFICIAL_KEY = new Map(COLUMNS.map(name => [toKey(name), name]));
+
+/* Theme toggle (shared behavior) */
+const THEME_KEY = "theme";
+function setTheme(theme, buttonEl) {
+  const t = theme === "light" ? "light" : "dark";
+  document.documentElement.setAttribute("data-theme", t);
+  localStorage.setItem(THEME_KEY, t);
+  if (buttonEl) {
+    const isLight = t === "light";
+    buttonEl.textContent = isLight ? "Light" : "Dark";
+    buttonEl.title = isLight ? "Switch to dark mode" : "Switch to light mode";
+    buttonEl.setAttribute("aria-pressed", String(isLight));
+  }
+}
+function initThemeToggle() {
+  const btn = document.getElementById("themeToggle");
+  if (!btn) return;
+  const saved = localStorage.getItem(THEME_KEY) || "dark";
+  setTheme(saved, btn);
+  btn.addEventListener("click", () => {
+    const next = document.documentElement.getAttribute("data-theme") === "light" ? "dark" : "light";
+    setTheme(next, btn);
+  });
+}
 
 function buildHeaderMap(csvHeaders){
   const map = new Map();
@@ -158,7 +182,7 @@ function renderDetail(row){
   // Short description (one-liner) shown under image block
   fill(shortDescEl, row["One-Sentence Short Description"]);
 
-  // Overview: prefer "Game Description" via mapping → Long Description
+  // Overview: prefer "Long Description" (aliased from "Game Description" if needed)
   const longPref = normalizeStr(row["Long Description"]) || normalizeStr(row["Game Description"]);
   fill(longDescEl, longPref);
 
@@ -224,6 +248,8 @@ function renderDetail(row){
 /* Boot */
 (async function init(){
   $("#year").textContent = new Date().getFullYear();
+
+  initThemeToggle();
 
   const idParam = new URLSearchParams(location.search).get("id");
   const idx = idParam != null ? parseInt(idParam, 10) : NaN;

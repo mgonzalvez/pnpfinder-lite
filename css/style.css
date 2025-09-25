@@ -81,8 +81,8 @@ body {
 .search input::placeholder { color: color-mix(in srgb, var(--muted) 85%, transparent); }
 .search input:focus { outline: 2px solid var(--focus); outline-offset: 2px; }
 
-/* View toggle */
-.view-toggle .toggle {
+/* View + Theme toggles share styling */
+.view-toggle .toggle, .theme .toggle {
   border: 1px solid var(--border);
   padding: .55rem .9rem;
   border-radius: 10px;
@@ -91,7 +91,9 @@ body {
   cursor: pointer;
   transition: box-shadow .15s ease, border-color .15s ease;
 }
-.view-toggle .toggle:hover { border-color: color-mix(in srgb, var(--accent-2) 40%, var(--border)); }
+.view-toggle .toggle:hover, .theme .toggle:hover {
+  border-color: color-mix(in srgb, var(--accent-2) 40%, var(--border));
+}
 .view-toggle .toggle.active {
   border-color: var(--accent-2);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-2) 30%, transparent);

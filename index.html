@@ -3,80 +3,72 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>PnPFinder</title>
-
-  <!-- Styles -->
-  <link rel="stylesheet" href="/css/style.css" />
-
-  <!-- CSV parsing -->
-  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js" defer></script>
-
-  <!-- App -->
-  <script type="module" src="/js/script.js" defer></script>
-
+  <title>PnPFinder — Print-and-Play Games</title>
   <meta name="color-scheme" content="dark light" />
+  <link rel="stylesheet" href="/css/style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js" defer></script>
+  <script type="module" src="/js/script.js" defer></script>
 </head>
 <body>
   <header class="site-header wrap" role="banner">
     <div class="brand">
-      <h1>PnPFinder</h1>
+      <h1><a class="brand-link" href="/">PnPFinder</a></h1>
       <p class="tagline">Search for and discover great print-and-play games.</p>
     </div>
 
     <div class="controls">
       <div class="search">
-        <label for="q" class="sr-only">Search</label>
-        <input id="q" name="q" type="search" placeholder="Search title, designer, publisher, description…" aria-label="Search games" autocomplete="off" />
+        <label for="q" class="sr-only">Search games</label>
+        <input id="q" type="search" placeholder="Search title, designer, publisher, description…" autocomplete="off" />
       </div>
 
       <div class="view-toggle" role="group" aria-label="View mode">
-        <button id="viewCards" class="toggle active" aria-pressed="true" title="Card view">Cards</button>
-        <button id="viewList" class="toggle" aria-pressed="false" title="List view">List</button>
+        <button id="viewCards" class="toggle" aria-pressed="true">Cards</button>
+        <button id="viewList" class="toggle" aria-pressed="false">List</button>
       </div>
 
-      <!-- Sort control -->
       <div class="sort">
         <label for="sortBy" class="sr-only">Sort by</label>
         <select id="sortBy" aria-label="Sort by">
-          <option value="relevance" selected>Relevance</option>
+          <option value="relevance">Relevance</option>
           <option value="newest">Newest</option>
           <option value="az">A–Z</option>
           <option value="release-asc">Release Year (oldest)</option>
         </select>
       </div>
+
+      <div class="theme">
+        <button id="themeToggle" class="toggle" aria-pressed="false" title="Switch to light mode">Dark</button>
+      </div>
     </div>
   </header>
 
-  <main class="wrap" id="main" role="main">
-    <section class="filters" aria-label="Filters">
-      <details open>
-        <summary>Filters</summary>
-        <form id="filtersForm">
-          <!-- Filters auto-generated here -->
-          <div id="filtersGrid" class="filters-grid" aria-live="polite"></div>
+  <main id="main" class="wrap" role="main" aria-busy="true">
+    <details class="filters" open>
+      <summary>Filters</summary>
+      <form id="filtersForm">
+        <div id="filtersGrid" class="filters-grid" aria-live="polite"></div>
 
-          <div class="filter-actions">
-            <button type="button" id="clearFilters" class="secondary">Clear</button>
-            <button type="submit" id="applyFilters" class="primary">Apply</button>
-          </div>
-        </form>
-      </details>
-    </section>
+        <div class="filter-actions">
+          <button type="button" id="clearFilters" class="secondary">Clear</button>
+          <button type="submit" id="applyFilters" class="primary">Apply</button>
+        </div>
+      </form>
+    </details>
 
-    <section aria-live="polite" aria-busy="true">
-      <div id="resultsMeta" class="results-meta"></div>
-      <div id="cards" class="cards" role="list"></div>
+    <div id="resultsMeta" class="results-meta" aria-live="polite"></div>
 
-      <nav id="pager" class="pager" aria-label="Pagination" hidden>
-        <button class="page-btn" data-page="prev" aria-label="Previous page">‹</button>
-        <div id="pageNumbers" class="page-numbers" role="group" aria-label="Page numbers"></div>
-        <button class="page-btn" data-page="next" aria-label="Next page">›</button>
-      </nav>
-    </section>
+    <section id="cards" class="cards" role="list"></section>
+
+    <nav id="pager" class="pager" aria-label="Pagination" hidden>
+      <button class="page-btn" data-page="prev" aria-label="Previous page">Prev</button>
+      <div id="pageNumbers" class="page-numbers" role="group" aria-label="Pages"></div>
+      <button class="page-btn" data-page="next" aria-label="Next page">Next</button>
+    </nav>
   </main>
 
   <footer class="site-footer wrap">
-    <small>© <span id="year"></span> PnPFinder • Community-run index for print-and-play games</small>
+    <small>© <span id="year"></span> PnPFinder</small>
   </footer>
 </body>
 </html>

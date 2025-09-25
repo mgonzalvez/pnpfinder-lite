@@ -4,11 +4,10 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>PnPFinder — Game Details</title>
-
+  <meta name="color-scheme" content="dark light" />
   <link rel="stylesheet" href="/css/style.css" />
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js" defer></script>
   <script type="module" src="/js/details.js" defer></script>
-  <meta name="color-scheme" content="dark light" />
 </head>
 <body>
   <header class="site-header wrap" role="banner">
@@ -16,11 +15,17 @@
       <h1><a class="brand-link" href="/">PnPFinder</a></h1>
       <p class="tagline">Game details</p>
     </div>
+
+    <div class="controls">
+      <div class="theme">
+        <button id="themeToggle" class="toggle" aria-pressed="false" title="Switch to light mode">Dark</button>
+      </div>
+    </div>
   </header>
 
   <main class="wrap" id="detailMain" role="main" aria-busy="true">
     <article id="gameDetail" class="detail" hidden>
-      <!-- HERO: image on top, meta below -->
+      <!-- HERO: image on top, then meta -->
       <header class="detail-hero">
         <div class="detail-media">
           <div class="thumb detail-thumb" id="detailThumb" aria-hidden="true"></div>
