@@ -361,39 +361,67 @@ function badge(text){ const b=document.createElement("span"); b.className="badge
 function linkBtn(href,label){ const a=document.createElement("a"); a.href=href; a.target="_blank"; a.rel="noopener"; a.textContent=label; return a; }
 
 function renderCards(rows){
-  const asList=currentView==="list";
+  const asList = currentView === "list";
   cardsEl.classList.toggle("list", asList);
-  cardsEl.innerHTML="";
+  cardsEl.innerHTML = "";
 
-  const frag=document.createDocumentFragment();
-  for (const r of rows){
-    const li=document.createElement("article");
-    li.className="card"; li.setAttribute("role","listitem");
+  const frag = document.createDocumentFragment();
+  for (const r of rows) {
+    const li = document.createElement("article");
+    li.className = "card";
+    li.setAttribute("role", "listitem");
 
-    const title=normalizeStr(r["Game Title"]) || "Untitled";
-    const mechanism=normalizeStr(r["Main Mechanism"]);
-    const shortDesc=normalizeStr(r["One-Sentence Short Description"]);
-    const category=normalizeStr(r["Game Category"]);
-    const players=normalizeStr(r["Number of Players"]);
+    const title     = normalizeStr(r["Game Title"]) || "Untitled";
+    const mechanism = normalizeStr(r["Main Mechanism"]);
+    const shortDesc = normalizeStr(r["One-Sentence Short Description"]);
+    const category  = normalizeStr(r["Game Category"]);
+    const players   = normalizeStr(r["Number of Players"]);
+    const imgURL    = normalizeStr(r["Game Image"]); // <-- use image column
 
-    const h=document.createElement("h3"); h.textContent=title;
-    const subtitle=document.createElement("div"); subtitle.className="subtitle"; subtitle.textContent=mechanism || "—";
-    const desc=document.createElement("div"); desc.className="desc"; desc.textContent=shortDesc || normalizeStr(r["Long Description"]).slice(0,180);
-    const meta=document.createElement("div"); meta.className="meta";
+    // Thumbnail (shown if URL present)
+    let thumbWrap = null;
+    if (imgURL) {
+      thumbWrap = document.createElement("div");
+      thumbWrap.className = "thumb";
+      const img = document.createElement("img");
+      img.src = imgURL;
+      img.alt = title;               // accessible label
+      img.loading = "lazy";          // performance
+      img.decoding = "async";
+      img.referrerPolicy = "no-referrer"; // safer for some hosts
+      img.onerror = () => thumbWrap.remove(); // hide if broken
+      thumbWrap.appendChild(img);
+    }
+
+    const h = document.createElement("h3"); h.textContent = title;
+    const subtitle = document.createElement("div"); subtitle.className = "subtitle"; subtitle.textContent = mechanism || "—";
+    const desc = document.createElement("div"); desc.className = "desc"; desc.textContent = shortDesc || normalizeStr(r["Long Description"]).slice(0, 180);
+
+    const meta = document.createElement("div"); meta.className = "meta";
     if (category) meta.appendChild(badge(category));
-    if (players) meta.appendChild(badge(`${players} players`));
+    if (players)  meta.appendChild(badge(`${players} players`));
 
-    const links=document.createElement("div"); links.className="links";
-    const dl1=normalizeStr(r["Download Link"]); const dl2=normalizeStr(r["Secondary Download Link"]);
-    if (dl1) links.appendChild(linkBtn(dl1,"Download"));
-    if (dl2) links.appendChild(linkBtn(dl2,"Alt link"));
+    const links = document.createElement("div"); links.className = "links";
+    const dl1 = normalizeStr(r["Download Link"]); const dl2 = normalizeStr(r["Secondary Download Link"]);
+    if (dl1) links.appendChild(linkBtn(dl1, "Download"));
+    if (dl2) links.appendChild(linkBtn(dl2, "Alt link"));
 
-    li.append(h, subtitle, desc, meta, links);
+    // Assemble card
+    if (asList) {
+      // In list view we want the thumbnail in its own first column
+      if (thumbWrap) li.append(thumbWrap);
+      li.append(h, subtitle, desc, meta);
+      if (links.childElementCount) li.append(links);
+    } else {
+      // In card view, put the image on top
+      if (thumbWrap) li.append(thumbWrap);
+      li.append(h, subtitle, desc, meta, links);
+    }
+
     frag.appendChild(li);
   }
   cardsEl.appendChild(frag);
 }
-
 function applyFiltersNow(showBusy=true){
   if (showBusy) mainEl.setAttribute("aria-busy","true");
 
