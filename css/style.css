@@ -192,31 +192,6 @@ button:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
   display: grid;
   gap: .6rem;
 }
-/* Card thumbnail */
-.card .thumb {
-  width: 100%;
-  aspect-ratio: 16 / 9;       /* keeps images proportional */
-  border-radius: 10px;
-  overflow: hidden;
-  background: var(--bg-elev); /* placeholder while loading */
-  border: 1px solid var(--border);
-}
-.card .thumb img {
-  width: 100%;
-  height: 100%;
-  display: block;
-  object-fit: cover;          /* crops to fill without distortion */
-}
-
-/* List view: smaller thumbnail, left-aligned */
-.list .card {
-  grid-template-columns: 140px 2fr 3fr 1fr; /* add a narrow column for the image */
-  align-items: start;
-}
-.list .card .thumb {
-  aspect-ratio: 4 / 3;
-  border-radius: 8px;
-}
 .card h3 { margin: 0; font-size: 1.15rem; }
 .card .subtitle { color: var(--muted); font-size: .95rem; }
 .card .desc { color: var(--text); }
@@ -238,15 +213,33 @@ button:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
 }
 .card .links a:hover { text-decoration: underline; }
 
-/* List view override */
+/* Card thumbnail */
+.card .thumb {
+  width: 100%;
+  aspect-ratio: 16 / 9;       /* keeps images proportional */
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--bg-elev); /* placeholder while loading */
+  border: 1px solid var(--border);
+}
+.card .thumb img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;          /* crop to fill without distortion */
+}
+
+/* List view override (adds a narrow image column) */
 .list { display: block; }
 .list .card {
   display: grid;
-  grid-template-columns: 2fr 1.25fr 3fr 1fr;
+  grid-template-columns: 140px 2fr 3fr 1fr; /* image | title/mech | desc | meta/links */
   gap: .75rem;
+  align-items: start;
 }
 .list .card h3 { font-size: 1rem; }
 .list .desc { color: var(--muted); }
+.list .card .thumb { aspect-ratio: 4 / 3; border-radius: 8px; }
 
 /* Pager */
 .pager {
