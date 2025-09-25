@@ -442,11 +442,30 @@ function renderCards(rows){
     if (dl1) links.appendChild(linkBtn(dl1, "Download"));
     if (dl2) links.appendChild(linkBtn(dl2, "Alt link"));
 
-    if (asList) {
-      if (thumbWrap) li.append(thumbWrap);
-      li.append(h, subtitle, desc, meta);
-      if (links.childElementCount) li.append(links);
-    } else {
+   if (asList) {
+  if (thumbWrap) li.append(thumbWrap);
+
+  // right-side content column
+  const body = document.createElement("div");
+  body.className = "list-body";
+
+  const header = document.createElement("div");
+  header.className = "list-header";
+  header.append(h, subtitle);
+
+  body.append(header);
+
+  if (desc && desc.textContent.trim()) body.append(desc);     // short description just under header
+  if (meta && meta.childElementCount) body.append(meta);       // badges next
+  if (links && links.childElementCount) {
+    links.classList.add("list-actions");                       // download at the bottom
+    body.append(links);
+  }
+
+  li.append(body);
+} else {
+  // (card view unchanged)
+
       if (thumbWrap) li.append(thumbWrap);
       li.append(h, subtitle, desc, meta, links);
     }
