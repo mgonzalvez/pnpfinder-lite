@@ -1,6 +1,7 @@
 /* PnPFinder — Resources page
    - Cards/List views, search, sort, pager, images, theme toggle
    - Category filter (dropdown) with live update + Clear/Apply
+   - Robust header aliasing + safer image URL normalization
 */
 
 const CSV_URL = "/data/resources.csv";
@@ -78,7 +79,7 @@ function debounce(fn, ms=250){ let t; return (...a)=>{ clearTimeout(t); t=setTim
 function normalizeStr(v){ return (v ?? "").toString().trim(); }
 function safeLower(s){ return String(s || "").toLowerCase(); }
 
-/* Image helpers (reuse from other pages) */
+/* Image helpers (aligned with other pages) */
 function firstUrlLike(raw) {
   if (!raw) return "";
   const parts = String(raw).split(MULTIVALUE_SEP).map(s=>s.trim().replace(/^['"]|['"]$/g,""));
@@ -89,10 +90,15 @@ function firstUrlLike(raw) {
 function normalizeImageHost(url) {
   if (!url) return "";
   if (url.startsWith("http://")) url = "https://" + url.slice(7);
-  const g = url.match(/drive\\.google\\.com\\/file\\/d\\/([^/]+)\\//);
+
+  // Google Drive "file/d/<id>/" → direct view
+  const g = url.match(/drive\.google\.com\/file\/d\/([^/]+)\//i);
   if (g) return `https://drive.google.com/uc?export=view&id=${g[1]}`;
-  if (/^https:\\/\\/www\\.dropbox\\.com\\//i.test(url)) {
-    url = url.replace("www.dropbox.com", "dl.dropboxusercontent.com").replace(/[?&]dl=\\d/, "");
+
+  // Dropbox share → direct
+  if (/^https:\/\/www\.dropbox\.com\//i.test(url)) {
+    url = url.replace("www.dropbox.com", "dl.dropboxusercontent.com");
+    url = url.replace(/[?&]dl=\d/, "");
   }
   return url;
 }
@@ -103,14 +109,27 @@ function getImageUrl(row){
   return normalizeImageHost(u);
 }
 
-/* CSV normalize */
+/* ===== CSV normalize: robust header aliasing ===== */
 function buildHeaderMap(csvHeaders){
   const map = new Map();
   for (const h of csvHeaders){
-    const k = toKey(h);
+    const original = (h ?? "");
+    const k = toKey(original);
+
+    // Skip empty / unnamed columns
+    if (!k) continue;
+
+    // Official exact match
     if (NAME_BY_OFFICIAL_KEY.has(k)) { map.set(k, NAME_BY_OFFICIAL_KEY.get(k)); continue; }
-    if (k==="img" || k==="imageurl" || k==="thumbnail" || k==="thumb") { map.set(k,"Image"); continue; }
-    map.set(k, h);
+
+    // Aliases
+    if (k === "resourcecategory") { map.set(k, "Category"); continue; }
+    if (k === "url" || k === "website" || k === "weblink") { map.set(k, "Link"); continue; }
+    if (k === "img" || k === "imageurl" || k === "thumbnail" || k === "thumb" || k === "cover") { map.set(k, "Image"); continue; }
+    if (k === "author" || k === "channel" || k === "by") { map.set(k, "Creator"); continue; }
+
+    // Otherwise pass through
+    map.set(k, original);
   }
   return map;
 }
@@ -119,6 +138,7 @@ function remapRow(row, headerMap){
   for (const n of COLUMNS) out[n] = "";
   for (const [rawKey, value] of Object.entries(row)){
     const k = toKey(rawKey);
+    if (!k) continue;
     const mapped = headerMap.get(k);
     if (!mapped) continue;
     if (NAME_BY_OFFICIAL_KEY.has(toKey(mapped))) {
@@ -252,6 +272,15 @@ function renderCards(rows){
   const asList = (localStorage.getItem("resources:viewMode") || currentView) === "list";
   cardsEl.classList.toggle("list", asList);
   cardsEl.innerHTML="";
+
+  if (!rows.length) {
+    // Graceful empty-state (keeps layout consistent)
+    const p = document.createElement("p");
+    p.className = "results-meta";
+    p.textContent = "No resources match your current filters/search.";
+    cardsEl.appendChild(p);
+    return;
+  }
 
   const frag=document.createDocumentFragment();
   for (const r of rows){
@@ -409,24 +438,32 @@ function setView(mode){
     });
   }
 
-  // Load CSV
-  const csvText = await fetch(CSV_URL).then(r=>r.text());
-  const parsed = Papa.parse(csvText, {
-    header: true,
-    skipEmptyLines: true,
-    transformHeader: (h) => h.replace(/^\uFEFF/, "").trim(),
-  });
+  try {
+    const csvText = await fetch(CSV_URL).then(r => {
+      if (!r.ok) throw new Error(`Failed to load ${CSV_URL} (${r.status})`);
+      return r.text();
+    });
 
-  const csvHeaders = parsed.meta.fields || [];
-  const headerMap = buildHeaderMap(csvHeaders);
+    const parsed = Papa.parse(csvText, {
+      header: true,
+      skipEmptyLines: true,
+      transformHeader: (h) => (h ?? "").replace(/^\uFEFF/, "").trim(),
+    });
 
-  rawRows = parsed.data.map((row, i) => {
-    const obj = remapRow(row, headerMap);
-    obj._idx = i; // preserve CSV order
-    return obj;
-  });
+    const csvHeaders = parsed.meta.fields || [];
+    const headerMap = buildHeaderMap(csvHeaders);
 
-  // Build Category filter UI and render
-  buildFiltersUI(rawRows);
-  applyNow();
+    rawRows = parsed.data.map((row, i) => {
+      const obj = remapRow(row, headerMap);
+      obj._idx = i; // preserve CSV order
+      return obj;
+    });
+
+    buildFiltersUI(rawRows);
+    applyNow();
+  } catch (err) {
+    console.error("Resources CSV load error:", err);
+    resultsMetaEl.textContent = "Could not load resources data.";
+    mainEl.setAttribute("aria-busy","false");
+  }
 })();
