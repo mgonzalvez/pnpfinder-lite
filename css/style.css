@@ -60,6 +60,27 @@ body {
 .brand .brand-link:hover { text-decoration: underline; }
 .brand .tagline { margin: .25rem 0 0; color: var(--muted); font-size: .95rem; }
 
+/* Top navigation (Games / Tutorials) */
+.top-nav {
+  margin-top: .5rem;
+  display: flex;
+  gap: .5rem;
+  flex-wrap: wrap;
+}
+.nav-link {
+  text-decoration: none;
+  border: 1px solid var(--border);
+  background: var(--bg-elev);
+  color: var(--text);
+  padding: .45rem .75rem;
+  border-radius: 999px;
+}
+.nav-link:hover { border-color: color-mix(in srgb, var(--accent-2) 40%, var(--border)); }
+.nav-link.active {
+  border-color: var(--accent-2);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-2) 30%, transparent);
+}
+
 .controls {
   display: grid;
   gap: .75rem;
