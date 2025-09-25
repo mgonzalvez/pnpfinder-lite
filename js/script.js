@@ -1,4 +1,4 @@
-/* PnPFinder — CSV-order relevance + reduced filters + sorting + ellipses pager */
+/* PnPFinder — CSV-order relevance + reduced filters + sorting + ellipses pager + images */
 
 const CSV_URL = "/data/games.csv";
 const PAGE_SIZE = 25;
@@ -87,6 +87,7 @@ function normalizeStr(v){ return (v ?? "").toString().trim(); }
 function isEmpty(v){ return v == null || String(v).trim() === ""; }
 function parseNumber(v){ const n=Number(String(v).replace(/[^\d.\-]/g,"")); return Number.isFinite(n)?n:null; }
 
+/* ---------- Range-ish helpers ---------- */
 function parseRangeish(value){
   const s=String(value||"").toLowerCase().trim(); if(!s) return null;
   const plus=s.match(/^(\d+)\s*\+$/); if(plus) return [parseInt(plus[1],10), Infinity];
@@ -122,23 +123,67 @@ function freePaidMatch(value, needle){
   return exactOrContains(value, needle);
 }
 
-/* ---------- CSV LOADING WITH HEADER NORMALIZATION ---------- */
+/* ---------- Image URL helpers ---------- */
+function firstUrlLike(raw) {
+  if (!raw) return "";
+  const parts = String(raw)
+    .split(MULTIVALUE_SEP)
+    .map(s => s.trim().replace(/^['"]|['"]$/g, ""));
+  for (const p of parts) {
+    if (/^https?:\/\//i.test(p)) return p;
+  }
+  for (const p of parts) {
+    if (/^\/\//.test(p)) return "https:" + p;
+  }
+  return "";
+}
+function normalizeImageHost(url) {
+  if (!url) return "";
+  if (url.startsWith("http://")) url = "https://" + url.slice(7);
 
+  // Google Drive share → direct view
+  const g = url.match(/drive\.google\.com\/file\/d\/([^/]+)\//);
+  if (g) return `https://drive.google.com/uc?export=view&id=${g[1]}`;
+
+  // Dropbox share → raw
+  if (/^https:\/\/www\.dropbox\.com\//i.test(url)) {
+    url = url.replace("www.dropbox.com", "dl.dropboxusercontent.com");
+    url = url.replace(/[?&]dl=\d/, "");
+  }
+  return url;
+}
+function getImageUrl(row) {
+  const raw = normalizeStr(row["Game Image"]);
+  if (!raw) return "";
+  const u = firstUrlLike(raw);
+  return normalizeImageHost(u);
+}
+
+/* ---------- CSV LOADING WITH HEADER NORMALIZATION ---------- */
 function buildHeaderMap(csvHeaders){
   // Map csvHeaderKey -> Official Display Name
   const map = new Map();
   for (const h of csvHeaders){
     const k = toKey(h);
-    if (NAME_BY_OFFICIAL_KEY.has(k)){
-      map.set(k, NAME_BY_OFFICIAL_KEY.get(k));
-      continue;
-    }
+
+    // exact known
+    if (NAME_BY_OFFICIAL_KEY.has(k)){ map.set(k, NAME_BY_OFFICIAL_KEY.get(k)); continue; }
+
+    // fuzzy aliases
     if (k==="title") { map.set(k, "Game Title"); continue; }
     if (k==="players" || k==="numberofplayers") { map.set(k,"Number of Players"); continue; }
     if (k==="playtime" || k==="playduration") { map.set(k,"Playtime"); continue; }
     if (k==="agerange" || k==="age") { map.set(k,"Age Range"); continue; }
     if (k==="category" || k==="mode" || k==="gameplaymode") { map.set(k,"Game Category"); continue; }
-    map.set(k, h); // keep unrecognized header as-is
+
+    // image column aliases → "Game Image"
+    if (k==="image" || k==="img" || k==="thumbnail" || k==="thumb" ||
+        k==="cover" || k==="gameimage" || k==="imageurl" || k==="imgurl") {
+      map.set(k, "Game Image"); continue;
+    }
+
+    // keep unrecognized header as-is
+    map.set(k, h);
   }
   return map;
 }
@@ -376,7 +421,7 @@ function renderCards(rows){
     const shortDesc = normalizeStr(r["One-Sentence Short Description"]);
     const category  = normalizeStr(r["Game Category"]);
     const players   = normalizeStr(r["Number of Players"]);
-    const imgURL    = normalizeStr(r["Game Image"]); // <-- use image column
+    const imgURL    = getImageUrl(r);  // ← image from CSV
 
     // Thumbnail (shown if URL present)
     let thumbWrap = null;
@@ -385,10 +430,10 @@ function renderCards(rows){
       thumbWrap.className = "thumb";
       const img = document.createElement("img");
       img.src = imgURL;
-      img.alt = title;               // accessible label
-      img.loading = "lazy";          // performance
+      img.alt = title;
+      img.loading = "lazy";
       img.decoding = "async";
-      img.referrerPolicy = "no-referrer"; // safer for some hosts
+      img.referrerPolicy = "no-referrer";
       img.onerror = () => thumbWrap.remove(); // hide if broken
       thumbWrap.appendChild(img);
     }
@@ -408,12 +453,10 @@ function renderCards(rows){
 
     // Assemble card
     if (asList) {
-      // In list view we want the thumbnail in its own first column
       if (thumbWrap) li.append(thumbWrap);
       li.append(h, subtitle, desc, meta);
       if (links.childElementCount) li.append(links);
     } else {
-      // In card view, put the image on top
       if (thumbWrap) li.append(thumbWrap);
       li.append(h, subtitle, desc, meta, links);
     }
@@ -422,6 +465,7 @@ function renderCards(rows){
   }
   cardsEl.appendChild(frag);
 }
+
 function applyFiltersNow(showBusy=true){
   if (showBusy) mainEl.setAttribute("aria-busy","true");
 
@@ -487,7 +531,7 @@ function setView(mode){
   // Build rows and stamp stable CSV order index
   rawRows = parsed.data.map((row, i) => {
     const obj = remapRow(row, headerMap);
-    obj._idx = i; // <— preserve original CSV order
+    obj._idx = i; // preserve original CSV order
     return obj;
   });
 
