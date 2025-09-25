@@ -288,18 +288,74 @@ function renderCards(rows){
 function badge(text){ const b=document.createElement("span"); b.className="badge"; b.textContent=text; return b; }
 function linkBtn(href,label){ const a=document.createElement("a"); a.href=href; a.target="_blank"; a.rel="noopener"; a.textContent=label; return a; }
 
-function renderPager(total, totalPages){
-  resultsMetaEl.textContent=`${total.toLocaleString()} game${total===1?"":"s"} • Page ${currentPage} of ${totalPages}`;
+function renderPager(total, totalPages) {
+  // Meta line (shows total results + page X of Y)
+  resultsMetaEl.textContent =
+    `${total.toLocaleString()} game${total === 1 ? "" : "s"} • Page ${currentPage} of ${totalPages}`;
+
+  // Hide the whole pager if there is only one page
   pagerEl.hidden = totalPages <= 1;
-  pageNumsEl.innerHTML="";
-  const front=Math.max(1,currentPage-2), back=Math.min(totalPages,currentPage+2);
-  for (let p=front; p<=back; p++){
-    const btn=document.createElement("button"); btn.textContent=String(p);
-    if (p===currentPage) btn.setAttribute("aria-current","page");
-    btn.addEventListener("click",()=>{ currentPage=p; applyFiltersNow(false); window.scrollTo({top:0,behavior:"smooth"}); });
-    pageNumsEl.appendChild(btn);
+
+  // Helper to create a numbered page button
+  const makePageBtn = (p, { current = false } = {}) => {
+    const btn = document.createElement("button");
+    btn.textContent = String(p);
+    if (current) btn.setAttribute("aria-current", "page");
+    btn.addEventListener("click", () => {
+      if (p !== currentPage) {
+        currentPage = p;
+        applyFiltersNow(false);
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+    });
+    return btn;
+  };
+
+  // Helper to create an ellipsis
+  const makeEllipsis = () => {
+    const span = document.createElement("span");
+    span.textContent = "…";
+    span.setAttribute("aria-hidden", "true");
+    span.style.padding = ".25rem .4rem";
+    return span;
+  };
+
+  // Compute the window around current page
+  // Always show: 1, last, current, and two neighbors on each side when possible
+  const windowSize = 2;
+  const start = Math.max(2, currentPage - windowSize);
+  const end = Math.min(totalPages - 1, currentPage + windowSize);
+
+  pageNumsEl.innerHTML = "";
+
+  // First page
+  pageNumsEl.appendChild(makePageBtn(1, { current: currentPage === 1 }));
+
+  // Ellipsis after first if needed
+  if (start > 2) pageNumsEl.appendChild(makeEllipsis());
+
+  // Middle window
+  for (let p = start; p <= end; p++) {
+    pageNumsEl.appendChild(makePageBtn(p, { current: p === currentPage }));
   }
+
+  // Ellipsis before last if needed
+  if (end < totalPages - 1) pageNumsEl.appendChild(makeEllipsis());
+
+  // Last page (only if there are >= 2 pages)
+  if (totalPages >= 2) {
+    pageNumsEl.appendChild(makePageBtn(totalPages, { current: currentPage === totalPages }));
+  }
+
+  // Prev/Next buttons (already in your HTML)
+  // We don’t recreate them; we just enable/disable according to the current page
+  const prevBtn = pagerEl.querySelector('[data-page="prev"]');
+  const nextBtn = pagerEl.querySelector('[data-page="next"]');
+
+  prevBtn.disabled = currentPage <= 1;
+  nextBtn.disabled = currentPage >= totalPages;
 }
+
 function wirePagerButtons(totalPages){
   pagerEl.querySelector('[data-page="prev"]').onclick=()=>{ if (currentPage>1){ currentPage--; applyFiltersNow(false); window.scrollTo({top:0,behavior:"smooth"});} };
   pagerEl.querySelector('[data-page="next"]').onclick=()=>{ if (currentPage<totalPages){ currentPage++; applyFiltersNow(false); window.scrollTo({top:0,behavior:"smooth"});} };
