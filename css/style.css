@@ -1,49 +1,42 @@
-/* General Styles */
+/* Global Styles */
+:root {
+    --primary-color: #2196F3;
+    --secondary-color: #BBDEFB;
+    --text-color: #333;
+    --background-color: #f5f5f5;
+    --dark-mode-bg: #212121;
+    --dark-mode-text: #fff;
+}
+
 body {
     font-family: sans-serif;
     margin: 0;
-    background-color: #121212; /* Dark background */
-    color: #fff;
+    padding: 0;
+    background-color: var(--background-color);
+    color: var(--text-color);
 }
 
 header, footer {
-    background-color: #212121;
+    background-color: var(--primary-color);
+    color: #fff;
     padding: 1em;
     text-align: center;
 }
 
-h1, h2 {
-    margin-top: 0;
-}
-
-/* Header Styles */
-#search-container {
-    margin-top: 10px;
-}
-
-#searchInput {
-    padding: 8px;
-    border: none;
-    border-radius: 5px;
-    width: 300px;
+main {
+    padding: 1em;
 }
 
 /* Game Card Styles */
 .game-card {
-    background-color: #333;
-    border-radius: 10px;
+    border: 1px solid #ccc;
     padding: 1em;
-    margin: 1em;
-    width: calc(30% - 2em); /* Adjust for spacing */
-    box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.3);
-    transition: transform 0.2s ease-in-out;
+    margin-bottom: 1em;
+    border-radius: 5px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-.game-card:hover {
-    transform: scale(1.05);
-}
-
-.game-card h3 {
+.game-card h2 {
     margin-top: 0;
 }
 
@@ -53,50 +46,40 @@ h1, h2 {
 
 /* Filters Styles */
 .filters {
-    width: 20%;
-    padding: 1em;
-}
-
-select {
-    margin-bottom: 0.5em;
-    padding: 8px;
-    border: none;
-    border-radius: 5px;
+    margin-bottom: 1em;
 }
 
 /* Pagination Styles */
-#pagination {
-    margin-top: 20px;
+.pagination {
     text-align: center;
 }
 
-button {
-    padding: 8px 16px;
+.pagination button {
+    padding: 0.5em 1em;
+    margin: 0 0.25em;
+    background-color: var(--primary-color);
+    color: #fff;
     border: none;
-    border-radius: 5px;
-    background-color: #4CAF50;
-    color: white;
     cursor: pointer;
-}
-
-button:disabled {
-    background-color: #ccc;
-    cursor: not-allowed;
 }
 
 /* Responsive Design */
 @media (max-width: 768px) {
     .game-card {
-        width: calc(50% - 2em);
-    }
-
-    .filters {
-        width: 100%;
+        flex-basis: 100%; /* Stack cards on smaller screens */
     }
 }
 
-@media (max-width: 480px) {
-    .game-card {
-        width: 100%;
-    }
+/* Dark Mode (Example - needs JavaScript toggle) */
+body.dark-mode {
+    background-color: var(--dark-mode-bg);
+    color: var(--dark-mode-text);
+}
+
+body.dark-mode header, body.dark-mode footer {
+    background-color: #333;
+}
+
+body.dark-mode .game-card {
+    border: 1px solid #555;
 }

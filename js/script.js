@@ -1,181 +1,141 @@
 document.addEventListener('DOMContentLoaded', () => {
     const gameContainer = document.getElementById('game-container');
-    const filterSection = document.getElementById('filter-section');
     const searchInput = document.getElementById('searchInput');
+    const filtersContainer = document.querySelector('.filters');
+    const gameList = document.getElementById('game-list');
+    const paginationContainer = document.getElementById('pagination');
 
-    let gamesData = [];
+    let games = [];
     let currentPage = 1;
     const itemsPerPage = 25;
 
-    // Function to fetch data from CSV using PapaParse
-    const fetchData = async () => {
-        try {
-            const response = await fetch('./data/games.csv');
-            const csvText = await response.text();
-            const results = Papa.parse(csvText, { header: true, dynamicTyping: true });
-            gamesData = results.data;
+    // Load games from CSV
+    fetch('data/games.csv')
+        .then(response => response.text())
+        .then(csvText => {
+            const lines = csvText.split('\n');
+            const headers = lines[0].split(',');
+            for (let i = 1; i < lines.length; i++) {
+                const data = lines[i].split(',');
+                const game = {};
+                for (let j = 0; j < headers.length; j++) {
+                    game[headers[j].trim()] = data[j].trim(); // Trim whitespace
+                }
+                games.push(game);
+            }
 
-            // Create filters dynamically
-            createFilters(gamesData);
+            // Generate filters dynamically
+            generateFilters(headers);
 
+            // Display games
             displayGames();
-        } catch (error) {
-            console.error('Error fetching data:', error);
-            gameContainer.innerHTML = '<p>Failed to load game data.</p>';
-        }
-    };
+        })
+        .catch(error => console.error('Error loading CSV:', error));
 
-    // Function to create filters based on CSV headers
-    const createFilters = (data) => {
-        const headers = Object.keys(data[0]);
+    // Function to generate filters
+    function generateFilters(headers) {
+        const uniqueValues = {};
 
-        headers.forEach((header) => {
-            const filterDiv = document.createElement('div');
-            const label = document.createElement('label');
-            label.textContent = header + ':';
-            const select = document.createElement('select');
-            select.id = header;
+        headers.forEach(header => {
+            uniqueValues[header] = new Set();
+            games.forEach(game => uniqueValues[header].add(game[header]));
+        });
 
-            // Get unique values for the filter options
-            const uniqueValues = [...new Set(data.map((item) => item[header]))];
-            uniqueValues.forEach((value) => {
-                const option = document.createElement('option');
-                option.value = value;
-                option.textContent = value;
-                select.appendChild(option);
+        for (const header in uniqueValues) {
+            const label = header.replace(/_/g, ' '); // Replace underscores with spaces
+
+            const selectElement = document.createElement('select');
+            selectElement.id = header;
+            selectElement.innerHTML += `<option value="">All ${label}s</option>`;
+
+            uniqueValues[header].forEach(value => {
+                const optionElement = document.createElement('option');
+                optionElement.value = value;
+                optionElement.textContent = value;
+                selectElement.appendChild(optionElement);
             });
 
-            filterDiv.appendChild(label);
-            filterDiv.appendChild(select);
-            filterSection.appendChild(filterDiv);
+            filtersContainer.appendChild(selectElement);
 
-            // Add event listener to filter select element
-            select.addEventListener('change', handleFilterChange);
-        });
-    };
+            selectElement.addEventListener('change', filterGames);
+        }
+    }
 
-    // Function to display games on the page
-    const displayGames = () => {
-        gameContainer.innerHTML = '';
+    // Function to display games
+    function displayGames() {
+        gameList.innerHTML = '';
 
         const startIndex = (currentPage - 1) * itemsPerPage;
         const endIndex = startIndex + itemsPerPage;
 
-        const filteredGames = gamesData.filter((game) => {
-            // Apply filters based on selected values
-            const filterHeaders = Object.keys(document.getElementById('filter-section').children);
-
-            for (const header of filterHeaders) {
+        const filteredGames = games.filter(game => {
+            // Apply filters
+            for (const header in document.querySelectorAll('select')) {
                 const selectElement = document.getElementById(header);
-                if (selectElement && selectElement.value !== 'All') {
-                    const selectedValue = selectElement.value;
-                    if (game[header] !== selectedValue) {
+                if (selectElement.value && selectElement.value !== 'All') {
+                    if (game[header] !== selectElement.value) {
                         return false;
                     }
                 }
             }
 
-            // Apply search filter
+            // Apply search term
             const searchTerm = searchInput.value.toLowerCase();
-            if (searchTerm !== '') {
-                const gameTitle = game['Game Title'].toLowerCase();
-                if (!gameTitle.includes(searchTerm)) {
-                    return false;
+            if (searchTerm) {
+                for (const key in game) {
+                    if (game[key].toLowerCase().includes(searchTerm)) {
+                        return true;
+                    }
                 }
             }
 
             return true;
         });
 
-        const slicedGames = filteredGames.slice(startIndex, endIndex);
+        const displayedGames = filteredGames.slice(startIndex, endIndex);
 
-        slicedGames.forEach((game) => {
-            const gameCard = document.createElement('div');
-            gameCard.classList.add('game-card');
+        displayedGames.forEach(game => {
+            const cardElement = document.createElement('div');
+            cardElement.classList.add('game-card');
 
-            const title = document.createElement('h3');
-            title.textContent = game['Game Title'];
+            cardElement.innerHTML = `
+                <h2>${game['Game Title']}</h2>
+                <p><strong>Main Mechanism:</strong> ${game['Main Mechanism']}</p>
+                <p><strong>Short Description:</strong> ${game['One-Sentence Short Description']}</p>
+                <p><strong>Category:</strong> ${game['Game Category']}</p>
+                <p><strong>Players:</strong> ${game['Number of Players']}</p>
+            `;
 
-            const mechanism = document.createElement('p');
-            mechanism.textContent = 'Mechanism: ' + game['Main Mechanism'];
-
-            const description = document.createElement('p');
-            description.textContent = game['One-Sentence Short Description'];
-
-            const category = document.createElement('p');
-            category.textContent = 'Category: ' + game['Game Category'];
-
-            const players = document.createElement('p');
-            players.textContent = 'Players: ' + game['Number of Players'];
-
-            gameCard.appendChild(title);
-            gameCard.appendChild(mechanism);
-            gameCard.appendChild(description);
-            gameCard.appendChild(category);
-            gameCard.appendChild(players);
-
-            gameContainer.appendChild(gameCard);
+            gameList.appendChild(cardElement);
         });
-    };
+    }
 
-    // Function to handle filter changes
-    const handleFilterChange = (event) => {
+    // Function to filter games (called on select change)
+    function filterGames() {
         displayGames();
-    };
+    }
 
-    // Function to handle search input changes
-    searchInput.addEventListener('input', displayGames);
-
-    // Function to update pagination controls
-    const updatePagination = () => {
+    // Function to update pagination controls (not fully implemented)
+    function updatePagination() {
         // Calculate total pages
-        const totalPages = Math.ceil(gamesData.length / itemsPerPage);
+        const totalPages = Math.ceil(games.length / itemsPerPage);
 
-        // Create pagination buttons
-        const paginationDiv = document.getElementById('pagination');
-        paginationDiv.innerHTML = '';
+        // Clear existing pagination controls
+        paginationContainer.innerHTML = '';
 
-        // Create previous button
-        const prevButton = document.createElement('button');
-        prevButton.textContent = 'Previous';
-        prevButton.disabled = currentPage === 1;
-        prevButton.addEventListener('click', () => {
-            currentPage--;
-            displayGames();
-            updatePagination();
-        });
-
-        // Create page number buttons
+        // Create buttons for each page
         for (let i = 1; i <= totalPages; i++) {
-            const pageButton = document.createElement('button');
-            pageButton.textContent = i;
-            pageButton.addEventListener('click', () => {
+            const buttonElement = document.createElement('button');
+            buttonElement.textContent = i;
+            buttonElement.addEventListener('click', () => {
                 currentPage = i;
                 displayGames();
-                updatePagination();
             });
-
-            if (i === currentPage) {
-                pageButton.disabled = true;
-            }
-
-            paginationDiv.appendChild(pageButton);
+            paginationContainer.appendChild(buttonElement);
         }
+    }
 
-        // Create next button
-        const nextButton = document.createElement('button');
-        nextButton.textContent = 'Next';
-        nextButton.disabled = currentPage === totalPages;
-        nextButton.addEventListener('click', () => {
-            currentPage++;
-            displayGames();
-            updatePagination();
-        });
+    // Event listener for search input (live update)
+    searchInput.addEventListener('input', displayGames);
 
-        paginationDiv.appendChild(prevButton);
-        paginationDiv.appendChild(nextButton);
-    };
-
-    // Fetch data and display games on page load
-    fetchData();
 });
