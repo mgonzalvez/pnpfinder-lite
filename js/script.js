@@ -1,9 +1,9 @@
-/* PnPFinder — resilient CSV loader + UI */
+/* PnPFinder — resilient CSV loader + UI (filters reduced) */
 
 const CSV_URL = "/data/games.csv";
 const PAGE_SIZE = 25;
 
-// OFFICIAL COLUMN LIST (the display names you want in the app)
+/* OFFICIAL COLUMN LIST (display names used in the app) */
 const COLUMNS = [
   "Game Title","Designer","Publisher","Free or Paid","Price","Number of Players","Playtime","Age Range",
   "Theme","Main Mechanism","Secondary Mechanism","Gameplay Complexity","Gameplay Mode","Game Category",
@@ -12,23 +12,39 @@ const COLUMNS = [
   "Curated Lists","Report Dead Link"
 ];
 
-// Build a canonical form of each official column to aid matching
+/* >>> NEW: limit which columns appear as dropdown filters <<< */
+const FILTER_COLUMNS = [
+  "Curated Lists",
+  "PnP Crafting Challenge Level",
+  "Number of Players",
+  "Playtime",
+  "Age Range",
+  "Main Mechanism",
+  "Gameplay Complexity",
+  "Theme",
+  "Free or Paid",
+  "Release Year",
+  "Languages",
+];
+
+/* Canonicalization helpers for robust header matching */
 const toKey = (s) => String(s ?? "")
   .replace(/^\uFEFF/, "")            // strip BOM
   .normalize("NFKC")
   .trim()
   .toLowerCase()
-  .replace(/[\u2018\u2019\u201C\u201D]/g, "'") // normalize curly quotes (lightly)
-  .replace(/[^a-z0-9]+/g, "");       // drop non-alphanumerics
+  .replace(/[\u2018\u2019\u201C\u201D]/g, "'")
+  .replace(/[^a-z0-9]+/g, "");
 
 const OFFICIAL_KEY_BY_NAME = new Map(COLUMNS.map(name => [name, toKey(name)]));
 const NAME_BY_OFFICIAL_KEY = new Map(COLUMNS.map(name => [toKey(name), name]));
 
-// Which columns get text search hits
+/* Text search across these fields */
 const SEARCH_FIELDS = [
   "Game Title","Designer","Publisher","One-Sentence Short Description","Long Description","Theme","Main Mechanism","Secondary Mechanism","Curated Lists"
 ];
 
+/* Field typing */
 const MULTIVALUE_SEP = /[;,|]/;
 const MULTIVALUE_FIELDS = new Set(["Languages","Curated Lists","Game Category"]);
 const URL_FIELDS = new Set(["Download Link","Secondary Download Link","Game Image"]);
@@ -36,7 +52,7 @@ const NUMERIC_FIELDS = new Set(["Price","Release Year"]);
 const RANGEISH_FIELDS = new Set(["Number of Players","Playtime","Age Range"]);
 const FREEPAID_FIELD = "Free or Paid";
 
-// State
+/* State */
 let rawRows = [];
 let filteredRows = [];
 let currentPage = 1;
@@ -44,7 +60,7 @@ let currentView = localStorage.getItem("viewMode") || "cards";
 let searchTerm = "";
 let activeFilters = {};
 
-// Elements
+/* Elements */
 const $ = (s, p=document) => p.querySelector(s);
 const $$ = (s, p=document) => [...p.querySelectorAll(s)];
 const cardsEl = $("#cards");
@@ -96,58 +112,47 @@ function numberEquals(value, needle){
 function freePaidMatch(value, needle){
   if (isEmpty(needle)) return true;
   const v=String(value||"").toLowerCase();
-  if (needle==="Free") return v.includes("free") || parseNumber($("#Price")?.value)===0;
+  if (needle==="Free") return v.includes("free");
   if (needle==="Paid") return !v.includes("free");
   return exactOrContains(value, needle);
 }
 
-/* --------- CSV LOADING WITH HEADER NORMALIZATION ---------- */
+/* ---------- CSV LOADING WITH HEADER NORMALIZATION ---------- */
 
 function buildHeaderMap(csvHeaders){
   // Map csvHeaderKey -> Official Display Name
   const map = new Map();
   for (const h of csvHeaders){
     const k = toKey(h);
-    // direct official match?
     if (NAME_BY_OFFICIAL_KEY.has(k)){
       map.set(k, NAME_BY_OFFICIAL_KEY.get(k));
       continue;
     }
-    // fuzzy helpers: sometimes "title" or "gametitle"
     if (k==="title") { map.set(k, "Game Title"); continue; }
     if (k==="players" || k==="numberofplayers") { map.set(k,"Number of Players"); continue; }
     if (k==="playtime" || k==="playduration") { map.set(k,"Playtime"); continue; }
     if (k==="agerange" || k==="age") { map.set(k,"Age Range"); continue; }
     if (k==="category" || k==="mode" || k==="gameplaymode") { map.set(k,"Game Category"); continue; }
-
-    // fallback: if a header isn't recognized, we keep it as-is (we won't filter on it)
-    map.set(k, h);
+    map.set(k, h); // keep unrecognized header as-is
   }
   return map;
 }
 
 function remapRow(row, headerMap){
-  // Create a full row object with ALL official columns
   const out = {};
   for (const name of COLUMNS) out[name] = "";
-
-  // For every key in the parsed CSV row, try to map it to an official column
   for (const [rawKey, value] of Object.entries(row)){
     const k = toKey(rawKey);
     const mappedName = headerMap.get(k);
     if (!mappedName) continue;
-
-    // If mappedName is one of our official columns, place it there; else keep by its visible name
     if (NAME_BY_OFFICIAL_KEY.has(toKey(mappedName))){
       out[mappedName] = value ?? "";
-    } else {
-      // non-official headers are ignored for the app, but you could store them if needed
     }
   }
   return out;
 }
 
-/* --------- UI BUILDERS ---------- */
+/* ---------- UI BUILDERS ---------- */
 
 function collectUniqueOptions(rows, column){
   const set = new Set();
@@ -188,7 +193,8 @@ function createSelect(column, options){
 function buildFiltersUI(rows){
   filtersGridEl.innerHTML="";
   const frag=document.createDocumentFragment();
-  for (const col of COLUMNS){
+  for (const col of FILTER_COLUMNS){
+    // Skip URL-like columns (none in FILTER_COLUMNS, but safe)
     if (URL_FIELDS.has(col)) continue;
     const opts=collectUniqueOptions(rows, col);
     const sel=createSelect(col, opts);
@@ -319,29 +325,28 @@ function setView(mode){
   applyFiltersNow(false);
 }
 
+/* ---------- Init ---------- */
 (async function init(){
   $("#year").textContent=new Date().getFullYear();
+
   viewCardsBtn.addEventListener("click",()=>setView("cards"));
   viewListBtn.addEventListener("click",()=>setView("list"));
   setView(currentView==="list" ? "list" : "cards");
+
   qEl.addEventListener("input", handleSearch);
 
-  // Load CSV. We let Papa handle BOM and header trimming as well.
   const csvText = await fetch(CSV_URL).then(r=>r.text());
-
   const parsed = Papa.parse(csvText, {
     header: true,
     skipEmptyLines: true,
-    transformHeader: (h) => h.replace(/^\uFEFF/, "").trim(), // extra safety
+    transformHeader: (h) => h.replace(/^\uFEFF/, "").trim(),
   });
 
   const csvHeaders = parsed.meta.fields || [];
   const headerMap = buildHeaderMap(csvHeaders);
 
-  // Create normalized rows aligned to our OFFICIAL column names
   rawRows = parsed.data.map(row => remapRow(row, headerMap));
 
-  // If "Game Title" truly missing in data, we’ll still have "", but most cases will now map correctly
   buildFiltersUI(rawRows);
   applyFiltersNow();
 })();
