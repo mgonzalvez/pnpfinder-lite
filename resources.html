@@ -3,30 +3,30 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>PnPFinder — Print-and-Play Games</title>
+  <title>PnPFinder — Resources</title>
   <meta name="color-scheme" content="dark light" />
   <link rel="stylesheet" href="/css/style.css" />
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js" defer></script>
-  <script type="module" src="/js/script.js" defer></script>
+  <script type="module" src="/js/resources.js" defer></script>
 </head>
 <body>
   <header class="site-header wrap" role="banner">
     <div class="brand">
       <h1><a class="brand-link" href="/">PnPFinder</a></h1>
-      <p class="tagline">Search for and discover great print-and-play games.</p>
+      <p class="tagline">Helpful communities, tools, websites, geeklists, and more.</p>
 
       <!-- Top-level navigation -->
       <nav class="top-nav" aria-label="Primary">
-        <a href="/" class="nav-link active" aria-current="page">Games</a>
+        <a href="/" class="nav-link">Games</a>
         <a href="/tutorials.html" class="nav-link">Tutorials</a>
-        <a href="/resources.html" class="nav-link">Resources</a>
+        <a href="/resources.html" class="nav-link active" aria-current="page">Resources</a>
       </nav>
     </div>
 
     <div class="controls">
       <div class="search">
-        <label for="q" class="sr-only">Search games</label>
-        <input id="q" type="search" placeholder="Search title, designer, publisher, description…" autocomplete="off" />
+        <label for="q" class="sr-only">Search resources</label>
+        <input id="q" type="search" placeholder="Search category, title, creator, description…" autocomplete="off" />
       </div>
 
       <div class="view-toggle" role="group" aria-label="View mode">
@@ -38,9 +38,8 @@
         <label for="sortBy" class="sr-only">Sort by</label>
         <select id="sortBy" aria-label="Sort by">
           <option value="relevance">Relevance</option>
-          <option value="newest">Newest</option>
           <option value="az">A–Z</option>
-          <option value="release-asc">Release Year (oldest)</option>
+          <option value="creator">Creator</option>
         </select>
       </div>
 
@@ -51,10 +50,13 @@
   </header>
 
   <main id="main" class="wrap" role="main" aria-busy="true">
+    <!-- Filters: Resource Category -->
     <details class="filters" open>
       <summary>Filters</summary>
       <form id="filtersForm">
-        <div id="filtersGrid" class="filters-grid" aria-live="polite"></div>
+        <div id="filtersGrid" class="filters-grid" aria-live="polite">
+          <!-- Category dropdown is injected by resources.js -->
+        </div>
 
         <div class="filter-actions">
           <button type="button" id="clearFilters" class="secondary">Clear</button>
