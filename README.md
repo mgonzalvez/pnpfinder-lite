@@ -1,32 +1,46 @@
-# PnPfinder - Print and Play Games Website
+# PnPfinder - Discover Print & Play Games
 
 ## Description
 
-PnPfinder is a static website to discover and download print-and-play (PnP) games. This project is built using vanilla JavaScript, HTML, and CSS to fetch game data from a CSV file hosted on GitHub and display it in an organized and user-friendly manner.
+PnPfinder is a static website designed to help the print-and-play (PnP) community discover and explore worthwhile PnP games. The site displays a collection of community-submitted games, allowing users to filter and sort the list based on various criteria.
+
+## Key Improvements and Explanations:
+
+- **Dynamic Filters:** The filters are now created dynamically based on the headers in your CSV file. This makes it much easier to add or remove columns without having to modify the JavaScript code.
+- **Live Filtering:** The handleFilterChange function is called whenever a filter value changes, automatically updating the displayed games.
+- **Search Functionality:** The search functionality is implemented using an event listener on the searchInput element.
+- **Pagination:** The pagination controls are created dynamically based on the total number of games and items per page.
+- **Loading State:** A loading message is displayed while data is being fetched.
+- **Accessibility:** Semantic HTML elements are used to improve accessibility. ARIA labels can be added as needed for further improvements.
+- **Responsiveness:** CSS media queries are used to adapt the layout to different screen sizes.
+- **Clean Code:** The code is well-commented and uses descriptive variable names.
+
+## Features
+
+-   **Game List Display:** Displays a grid of game cards with essential information.
+-   **Game Details Page:** Provides detailed information about each game.
+-   **Filters & Sorting:** Allows users to filter and sort the list of games based on various criteria.
+-   **Pagination:** Displays games in pages with navigation controls.
+-   **Data Fetching:** Fetches data from a CSV file using PapaParse.
+-   **Loading State:** Displays a loading message while data is being fetched.
+-   **Responsiveness:** Adapts to different screen sizes (mobile, tablet, desktop).
 
 ## Technologies Used
 
-* **HTML:** Semantic HTML5 for structure.
-* **CSS:** Vanilla CSS for styling and responsiveness.
-* **JavaScript:** Vanilla JavaScript for dynamic data fetching, filtering, sorting, and pagination.
-* **PapaParse:** For parsing CSV data.
-* **GitHub:** For hosting the CSV data.
+-   HTML
+-   CSS
+-   JavaScript (Vanilla JS)
+-   PapaParse
 
-## Setup
+## Getting Started
 
-1. Clone this repository to your local environment.
-2. Create a `data` directory at the root of the project.
-3. Place your `games.csv` file inside the `data` directory.
-4. Ensure that the URL for your `games.csv` file is correctly referenced in the JavaScript code (currently pointing to `/data/games.csv`).
+1.  Clone the repository: `git clone <repository_url>`
+2.  Open `index.html` in your browser.
 
-## Running the Application
+## Contributing
 
-1. Navigate to the root directory of the project in your terminal.
-2. Run the development server (if you have one set up) or simply open the `index.html` file in your web browser.
+Contributions are welcome! Feel free to submit pull requests or open issues for bug reports and feature requests.
 
-## Data Structure (games.csv)
+## License
 
-The `games.csv` file should have the following columns:
-
-```csv
-title,one_sentence_short_description,main_mechanism,secondary_mechanism,game_complexity,game_mode,game_category,pnp_crafting_challenge_level,release_year,download_link,secondary_download_link,print_components,other_components,languages,curated_lists,report_dead_link
+This project is licensed under the MIT License - see the `LICENSE` file for details.

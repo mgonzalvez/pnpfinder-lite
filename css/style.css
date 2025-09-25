@@ -1,105 +1,102 @@
-/* Basic Reset */
+/* General Styles */
 body {
-    margin: 0;
     font-family: sans-serif;
-    background-color: #f4f4f4;
-    color: #333;
-}
-
-.container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 20px;
-}
-
-/* General Layout */
-.view-toggle {
-    margin-bottom: 20px;
-}
-
-.game-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 20px;
-}
-
-.game-card {
-    background-color: #fff;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    transition: transform 0.2s ease;
-}
-
-.game-card:hover {
-    transform: scale(1.02);
-}
-
-.game-card h2 {
-    margin-top: 15px;
-}
-
-.game-card .details {
-    padding: 15px;
-}
-
-/* Dark Mode Styles */
-.game-card {
-    background-color: #2c3e50;
-    color: #eee;
-}
-
-.game-card:hover {
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-}
-
-.game-card h2 {
+    margin: 0;
+    background-color: #121212; /* Dark background */
     color: #fff;
 }
 
-/* Filter Styles */
-.filter-bar h2 {
-    margin-bottom: 15px;
+header, footer {
+    background-color: #212121;
+    padding: 1em;
+    text-align: center;
 }
 
-.filter-group {
-    margin-bottom: 15px;
+h1, h2 {
+    margin-top: 0;
 }
 
-.filter-group label {
-    display: block;
-    font-weight: bold;
+/* Header Styles */
+#search-container {
+    margin-top: 10px;
 }
 
-.filter-group select {
+#searchInput {
     padding: 8px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
+    border: none;
+    border-radius: 5px;
+    width: 300px;
+}
+
+/* Game Card Styles */
+.game-card {
+    background-color: #333;
+    border-radius: 10px;
+    padding: 1em;
+    margin: 1em;
+    width: calc(30% - 2em); /* Adjust for spacing */
+    box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.3);
+    transition: transform 0.2s ease-in-out;
+}
+
+.game-card:hover {
+    transform: scale(1.05);
+}
+
+.game-card h3 {
+    margin-top: 0;
+}
+
+.game-card p {
+    margin-bottom: 0.5em;
+}
+
+/* Filters Styles */
+.filters {
+    width: 20%;
+    padding: 1em;
+}
+
+select {
+    margin-bottom: 0.5em;
+    padding: 8px;
+    border: none;
+    border-radius: 5px;
 }
 
 /* Pagination Styles */
-.pagination {
-    display: flex;
-    justify-content: center;
+#pagination {
     margin-top: 20px;
+    text-align: center;
 }
 
-.pagination button {
-    padding: 10px 15px;
+button {
+    padding: 8px 16px;
     border: none;
-    background-color: #007bff;
+    border-radius: 5px;
+    background-color: #4CAF50;
     color: white;
-    border-radius: 4px;
     cursor: pointer;
-    margin: 0 5px;
 }
 
-.pagination button:hover {
-    background-color: #0056b3;
+button:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
 }
 
 /* Responsive Design */
 @media (max-width: 768px) {
-    .game-grid {
-        grid-template-columns: 1fr;
+    .game-card {
+        width: calc(50% - 2em);
+    }
+
+    .filters {
+        width: 100%;
+    }
+}
+
+@media (max-width: 480px) {
+    .game-card {
+        width: 100%;
     }
 }

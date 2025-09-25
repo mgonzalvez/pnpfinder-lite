@@ -1,176 +1,181 @@
 document.addEventListener('DOMContentLoaded', () => {
-    const searchInput = document.getElementById('search-input');
-    const gameGridElement = document.getElementById('game-grid');
-    const filterDropdowns = document.querySelectorAll('.filter-group select');
-    const applyButton = document.getElementById('apply-button'); // Add this button in HTML if needed
+    const gameContainer = document.getElementById('game-container');
+    const filterSection = document.getElementById('filter-section');
+    const searchInput = document.getElementById('searchInput');
 
-    let games = [];
+    let gamesData = [];
     let currentPage = 1;
-    const gamesPerPage = 25;
+    const itemsPerPage = 25;
 
-    // Function to fetch and parse CSV data
-    async function fetchGames() {
+    // Function to fetch data from CSV using PapaParse
+    const fetchData = async () => {
         try {
-            const response = await fetch('/data/games.csv'); // Assuming your CSV is in /data
-            const data = await response.text();
-            const parsedData = Papa.parse(data);
-            games = parsedData.data;
-            renderGames();
+            const response = await fetch('./data/games.csv');
+            const csvText = await response.text();
+            const results = Papa.parse(csvText, { header: true, dynamicTyping: true });
+            gamesData = results.data;
+
+            // Create filters dynamically
+            createFilters(gamesData);
+
+            displayGames();
         } catch (error) {
-            console.error('Error fetching games:', error);
-            gameGridElement.innerHTML = '<p>Error loading games.</p>';
+            console.error('Error fetching data:', error);
+            gameContainer.innerHTML = '<p>Failed to load game data.</p>';
         }
-    }
+    };
 
-    // Function to render games in the grid
-    function renderGames() {
-        gameGridElement.innerHTML = ''; // Clear existing games
+    // Function to create filters based on CSV headers
+    const createFilters = (data) => {
+        const headers = Object.keys(data[0]);
 
-        if (games.length === 0) {
-            gameGridElement.innerHTML = '<p>No games to display.</p>';
-            return;
-        }
+        headers.forEach((header) => {
+            const filterDiv = document.createElement('div');
+            const label = document.createElement('label');
+            label.textContent = header + ':';
+            const select = document.createElement('select');
+            select.id = header;
 
-        for (const game of games) {
-            const card = document.createElement('div');
-            card.classList.add('game-card');
+            // Get unique values for the filter options
+            const uniqueValues = [...new Set(data.map((item) => item[header]))];
+            uniqueValues.forEach((value) => {
+                const option = document.createElement('option');
+                option.value = value;
+                option.textContent = value;
+                select.appendChild(option);
+            });
 
-            const title = document.createElement('h2');
-            title.textContent = game.title;
-            card.appendChild(title);
+            filterDiv.appendChild(label);
+            filterDiv.appendChild(select);
+            filterSection.appendChild(filterDiv);
 
-            const mechanism = document.createElement('p');
-            mechanism.classList.add('details');
-            mechanism.textContent = `<strong>Main Mechanism:</strong> ${game.main_mechanism}`;
-            card.appendChild(mechanism);
+            // Add event listener to filter select element
+            select.addEventListener('change', handleFilterChange);
+        });
+    };
 
-            const shortDescription = document.createElement('p');
-            shortDescription.classList.add('details');
-            shortDescription.textContent = `<strong>Short Description:</strong> ${game.one_sentence_short_description}`;
-            card.appendChild(shortDescription);
+    // Function to display games on the page
+    const displayGames = () => {
+        gameContainer.innerHTML = '';
 
-            const category = document.createElement('p');
-            category.classList.add('details');
-            category.textContent = `<strong>Category:</strong> ${game.game_category}`;
-            card.appendChild(category);
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        const endIndex = startIndex + itemsPerPage;
 
-            const players = document.createElement('p');
-            players.classList.add('details');
-            players.textContent = `<strong>Players:</strong> ${game.number_of_players}`;
-            card.appendChild(players);
+        const filteredGames = gamesData.filter((game) => {
+            // Apply filters based on selected values
+            const filterHeaders = Object.keys(document.getElementById('filter-section').children);
 
-            const downloadLink = document.createElement('a');
-            downloadLink.href = game.download_link;
-            downloadLink.textContent = 'Download';
-            downloadLink.target = '_blank'; // Open in a new tab
-            downloadLink.classList.add('details');
-            card.appendChild(downloadLink);
-
-            // Add more details as needed for your card structure
-            // ...
-
-            gameGridElement.appendChild(card);
-        }
-    }
-
-    // Function to handle filtering and rendering
-    function filterAndRender() {
-        const selectedFilters = {};
-
-        for (const dropdown of filterDropdowns) {
-            if (dropdown.value !== '') {
-                selectedFilters[dropdown.id] = dropdown.value;
+            for (const header of filterHeaders) {
+                const selectElement = document.getElementById(header);
+                if (selectElement && selectElement.value !== 'All') {
+                    const selectedValue = selectElement.value;
+                    if (game[header] !== selectedValue) {
+                        return false;
+                    }
+                }
             }
-        }
 
-        const filteredGames = games.filter(game => {
-            for (const key in selectedFilters) {
-                if (game[key] !== selectedFilters[key]) {
+            // Apply search filter
+            const searchTerm = searchInput.value.toLowerCase();
+            if (searchTerm !== '') {
+                const gameTitle = game['Game Title'].toLowerCase();
+                if (!gameTitle.includes(searchTerm)) {
                     return false;
                 }
             }
+
             return true;
         });
 
-        renderGames(filteredGames, currentPage);
-    }
+        const slicedGames = filteredGames.slice(startIndex, endIndex);
 
-    // Function to handle pagination
-    function handlePagination() {
-        const totalGames = games.length;
-        const gamesPerPage = 25;
-        const totalPages = Math.ceil(totalGames / gamesPerPage);
+        slicedGames.forEach((game) => {
+            const gameCard = document.createElement('div');
+            gameCard.classList.add('game-card');
 
-        const paginationContainer = document.querySelector('.pagination');
-        const prevButton = paginationContainer.querySelector('button[aria-label="Previous Page"]');
-        const nextButton = paginationContainer.querySelector('button[aria-label="Next Page"]');
+            const title = document.createElement('h3');
+            title.textContent = game['Game Title'];
 
-        if (currentPage === 1) {
-            prevButton.disabled = true;
-        } else if (currentPage === totalPages) {
-            nextButton.disabled = true;
-        } else {
-            prevButton.disabled = false;
-            nextButton.disabled = false;
-        }
+            const mechanism = document.createElement('p');
+            mechanism.textContent = 'Mechanism: ' + game['Main Mechanism'];
 
-        nextButton.addEventListener('click', () => {
-            currentPage++;
-            renderGames(games, currentPage);
+            const description = document.createElement('p');
+            description.textContent = game['One-Sentence Short Description'];
+
+            const category = document.createElement('p');
+            category.textContent = 'Category: ' + game['Game Category'];
+
+            const players = document.createElement('p');
+            players.textContent = 'Players: ' + game['Number of Players'];
+
+            gameCard.appendChild(title);
+            gameCard.appendChild(mechanism);
+            gameCard.appendChild(description);
+            gameCard.appendChild(category);
+            gameCard.appendChild(players);
+
+            gameContainer.appendChild(gameCard);
         });
+    };
 
+    // Function to handle filter changes
+    const handleFilterChange = (event) => {
+        displayGames();
+    };
+
+    // Function to handle search input changes
+    searchInput.addEventListener('input', displayGames);
+
+    // Function to update pagination controls
+    const updatePagination = () => {
+        // Calculate total pages
+        const totalPages = Math.ceil(gamesData.length / itemsPerPage);
+
+        // Create pagination buttons
+        const paginationDiv = document.getElementById('pagination');
+        paginationDiv.innerHTML = '';
+
+        // Create previous button
+        const prevButton = document.createElement('button');
+        prevButton.textContent = 'Previous';
+        prevButton.disabled = currentPage === 1;
         prevButton.addEventListener('click', () => {
             currentPage--;
-            renderGames(games, currentPage);
+            displayGames();
+            updatePagination();
         });
-    }
 
-    // Initial load
-    fetchGames();
-    filterAndRender();
-    handlePagination();
+        // Create page number buttons
+        for (let i = 1; i <= totalPages; i++) {
+            const pageButton = document.createElement('button');
+            pageButton.textContent = i;
+            pageButton.addEventListener('click', () => {
+                currentPage = i;
+                displayGames();
+                updatePagination();
+            });
 
-    // Event listeners for search and filters
-    searchInput.addEventListener('input', () => {
-        const searchTerm = searchInput.value.toLowerCase();
-        const filteredGames = games.filter(game => {
-            if (game.title.toLowerCase().includes(searchTerm) ||
-                game.one_sentence_short_description.toLowerCase().includes(searchTerm) ||
-                game.main_mechanism.toLowerCase().includes(searchTerm) ||
-                game.game_category.toLowerCase().includes(searchTerm)) {
-                return true;
+            if (i === currentPage) {
+                pageButton.disabled = true;
             }
-            return false;
+
+            paginationDiv.appendChild(pageButton);
+        }
+
+        // Create next button
+        const nextButton = document.createElement('button');
+        nextButton.textContent = 'Next';
+        nextButton.disabled = currentPage === totalPages;
+        nextButton.addEventListener('click', () => {
+            currentPage++;
+            displayGames();
+            updatePagination();
         });
-        renderGames(filteredGames, 1); // Reset to page 1 after search
-    });
 
-    // Event listener for filter changes
-    applyButton.addEventListener('click', () => {
-        filterAndRender();
-    });
+        paginationDiv.appendChild(prevButton);
+        paginationDiv.appendChild(nextButton);
+    };
 
-    // Event listeners for filter dropdown changes
-    filterDropdowns.forEach(dropdown => {
-        dropdown.addEventListener('change', () => {
-            filterAndRender();
-        });
-    });
-
-    // Toggle grid/list view
-    const viewToggleBtn = document.getElementById('grid-view-btn');
-    const listViewBtn = document.getElementById('list-view-btn');
-
-    viewToggleBtn.addEventListener('click', () => {
-        gameGridElement.classList.remove('grid-view');
-        gameGridElement.classList.add('list-view');
-    });
-
-    listViewBtn.addEventListener('click', () => {
-        gameGridElement.classList.remove('list-view');
-        gameGridElement.classList.add('grid-view');
-    });
-
-    // Initialize pagination
-    handlePagination();
+    // Fetch data and display games on page load
+    fetchData();
 });
