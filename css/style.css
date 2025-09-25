@@ -371,3 +371,32 @@ button:focus-visible, .btn:focus-visible { outline: 3px solid var(--focus); outl
   clip: rect(1px,1px,1px,1px);
   white-space: nowrap; border: 0; padding: 0; margin: -1px;
 }
+/* ==== Details page: image on top, meta underneath ==== */
+.detail-hero { display: block; }
+
+.detail-media {
+  max-width: 720px;         /* keep the nice wide hero size */
+  margin: 0 auto;           /* center the image + meta */
+  display: grid;
+  gap: .75rem;
+}
+
+.detail-thumb {
+  width: 100%;
+  max-width: 720px;
+  aspect-ratio: 16 / 9;
+  height: auto;
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+}
+
+.detail-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* The rest of the page sections remain unchanged */

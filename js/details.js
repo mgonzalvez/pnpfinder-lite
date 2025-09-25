@@ -1,4 +1,4 @@
-/* PnPFinder — Game Details page */
+/* PnPFinder — Game Details page (image on top; meta below; overview uses "Game Description") */
 
 const CSV_URL = "/data/games.csv";
 
@@ -33,11 +33,18 @@ function buildHeaderMap(csvHeaders){
     if (k==="playtime" || k==="playduration") { map.set(k,"Playtime"); continue; }
     if (k==="agerange" || k==="age") { map.set(k,"Age Range"); continue; }
     if (k==="category" || k==="mode" || k==="gameplaymode") { map.set(k,"Game Category"); continue; }
-    // Image aliases
+
+    // Image aliases → "Game Image"
     if (k==="image" || k==="img" || k==="thumbnail" || k==="thumb" ||
         k==="cover" || k==="gameimage" || k==="imageurl" || k==="imgurl") {
       map.set(k, "Game Image"); continue;
     }
+
+    // Long description aliases → "Long Description"
+    if (k==="gamedescription" || k==="description" || k==="longdesc" || k==="longdescription") {
+      map.set(k, "Long Description"); continue;
+    }
+
     map.set(k, h);
   }
   return map;
@@ -59,6 +66,7 @@ function remapRow(row, headerMap){
 
 function normalizeStr(v){ return (v ?? "").toString().trim(); }
 
+/* Image helpers (match script.js) */
 function firstUrlLike(raw) {
   if (!raw) return "";
   const parts = String(raw)
@@ -147,9 +155,12 @@ function renderDetail(row){
   const publisher = normalizeStr(row["Publisher"]);
   bylineEl.textContent = [designer, publisher].filter(Boolean).join(" • ");
 
-  // Descriptions
+  // Short description (one-liner) shown under image block
   fill(shortDescEl, row["One-Sentence Short Description"]);
-  fill(longDescEl, row["Long Description"]);
+
+  // Overview: prefer "Game Description" via mapping → Long Description
+  const longPref = normalizeStr(row["Long Description"]) || normalizeStr(row["Game Description"]);
+  fill(longDescEl, longPref);
 
   // Facts
   fill(fields.freePaid, row["Free or Paid"]);
@@ -168,7 +179,7 @@ function renderDetail(row){
   fill(fields.printComponents, row["Print Components"]);
   fill(fields.otherComponents, row["Other Components"]);
 
-  // Image (250x250)
+  // Image (wide hero)
   const url = getImageUrl(row);
   if (url) {
     const img = document.createElement("img");
@@ -182,7 +193,7 @@ function renderDetail(row){
     thumbEl.removeAttribute("aria-hidden");
   }
 
-  // Downloads
+  // Downloads below image
   const dl1 = normalizeStr(row["Download Link"]);
   const dl2 = normalizeStr(row["Secondary Download Link"]);
 

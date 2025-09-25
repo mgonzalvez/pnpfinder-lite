@@ -20,24 +20,29 @@
 
   <main class="wrap" id="detailMain" role="main" aria-busy="true">
     <article id="gameDetail" class="detail" hidden>
+      <!-- HERO: image on top, meta below -->
       <header class="detail-hero">
-        <div class="thumb detail-thumb" id="detailThumb" aria-hidden="true"></div>
-        <div class="detail-head">
-          <h2 id="detailTitle">Game Title</h2>
-          <div class="byline" id="detailByline"></div>
+        <div class="detail-media">
+          <div class="thumb detail-thumb" id="detailThumb" aria-hidden="true"></div>
 
-          <div class="detail-actions">
-            <a id="primaryDownload" class="btn primary" target="_blank" rel="noopener">Download</a>
-            <a id="secondaryDownload" class="btn secondary" target="_blank" rel="noopener" hidden>Alt link</a>
-            <a id="reportLink" class="btn danger" href="mailto:help@pnpfinder.com" rel="noopener">Report dead link</a>
+          <div class="detail-head">
+            <h2 id="detailTitle">Game Title</h2>
+            <div class="byline" id="detailByline"></div>
+            <p id="shortDesc" class="lead"></p>
+
+            <div class="detail-actions">
+              <a id="primaryDownload" class="btn primary" target="_blank" rel="noopener">Download</a>
+              <a id="secondaryDownload" class="btn secondary" target="_blank" rel="noopener" hidden>Alt link</a>
+              <a id="reportLink" class="btn danger" href="mailto:help@pnpfinder.com" rel="noopener">Report dead link</a>
+            </div>
           </div>
         </div>
       </header>
 
+      <!-- INFO SECTIONS -->
       <section class="detail-sections">
         <section class="detail-section">
           <h3>Overview</h3>
-          <p id="shortDesc" class="lead"></p>
           <p id="longDesc"></p>
         </section>
 
