@@ -1,4 +1,4 @@
-/* PnPFinder — CSV-order relevance + reduced filters + sorting + ellipses pager + images */
+/* PnPFinder — CSV-order relevance + reduced filters + sorting + ellipses pager + images + details link */
 
 const CSV_URL = "/data/games.csv";
 const PAGE_SIZE = 25;
@@ -129,23 +129,15 @@ function firstUrlLike(raw) {
   const parts = String(raw)
     .split(MULTIVALUE_SEP)
     .map(s => s.trim().replace(/^['"]|['"]$/g, ""));
-  for (const p of parts) {
-    if (/^https?:\/\//i.test(p)) return p;
-  }
-  for (const p of parts) {
-    if (/^\/\//.test(p)) return "https:" + p;
-  }
+  for (const p of parts) { if (/^https?:\/\//i.test(p)) return p; }
+  for (const p of parts) { if (/^\/\//.test(p)) return "https:" + p; }
   return "";
 }
 function normalizeImageHost(url) {
   if (!url) return "";
   if (url.startsWith("http://")) url = "https://" + url.slice(7);
-
-  // Google Drive share → direct view
   const g = url.match(/drive\.google\.com\/file\/d\/([^/]+)\//);
   if (g) return `https://drive.google.com/uc?export=view&id=${g[1]}`;
-
-  // Dropbox share → raw
   if (/^https:\/\/www\.dropbox\.com\//i.test(url)) {
     url = url.replace("www.dropbox.com", "dl.dropboxusercontent.com");
     url = url.replace(/[?&]dl=\d/, "");
@@ -161,28 +153,19 @@ function getImageUrl(row) {
 
 /* ---------- CSV LOADING WITH HEADER NORMALIZATION ---------- */
 function buildHeaderMap(csvHeaders){
-  // Map csvHeaderKey -> Official Display Name
   const map = new Map();
   for (const h of csvHeaders){
     const k = toKey(h);
-
-    // exact known
     if (NAME_BY_OFFICIAL_KEY.has(k)){ map.set(k, NAME_BY_OFFICIAL_KEY.get(k)); continue; }
-
-    // fuzzy aliases
     if (k==="title") { map.set(k, "Game Title"); continue; }
     if (k==="players" || k==="numberofplayers") { map.set(k,"Number of Players"); continue; }
     if (k==="playtime" || k==="playduration") { map.set(k,"Playtime"); continue; }
     if (k==="agerange" || k==="age") { map.set(k,"Age Range"); continue; }
     if (k==="category" || k==="mode" || k==="gameplaymode") { map.set(k,"Game Category"); continue; }
-
-    // image column aliases → "Game Image"
     if (k==="image" || k==="img" || k==="thumbnail" || k==="thumb" ||
         k==="cover" || k==="gameimage" || k==="imageurl" || k==="imgurl") {
       map.set(k, "Game Image"); continue;
     }
-
-    // keep unrecognized header as-is
     map.set(k, h);
   }
   return map;
@@ -299,15 +282,12 @@ function sortRows(rows){
   // Relevance = CSV order via _idx
   if (sortBy === "relevance") {
     return rows.slice().sort((a,b) => (a._idx ?? 0) - (b._idx ?? 0));
-  }
-
+    }
   const byTitle = (a, b) => safeLower(a["Game Title"]).localeCompare(safeLower(b["Game Title"]), undefined, {numeric:true, sensitivity:"base"});
   const byYearDesc = (a, b) => (parseNumber(b["Release Year"]) ?? -Infinity) - (parseNumber(a["Release Year"]) ?? -Infinity);
   const byYearAsc  = (a, b) => (parseNumber(a["Release Year"]) ??  Infinity) - (parseNumber(b["Release Year"]) ??  Infinity);
 
-  if (sortBy === "az") {
-    return rows.slice().sort((a,b) => byTitle(a,b));
-  }
+  if (sortBy === "az") return rows.slice().sort((a,b) => byTitle(a,b));
   if (sortBy === "newest") {
     return rows.slice().sort((a,b) => {
       const d = byYearDesc(a,b);
@@ -320,8 +300,6 @@ function sortRows(rows){
       return d !== 0 ? d : byTitle(a,b);
     });
   }
-
-  // Fallback: CSV order
   return rows.slice().sort((a,b) => (a._idx ?? 0) - (b._idx ?? 0));
 }
 
@@ -421,9 +399,17 @@ function renderCards(rows){
     const shortDesc = normalizeStr(r["One-Sentence Short Description"]);
     const category  = normalizeStr(r["Game Category"]);
     const players   = normalizeStr(r["Number of Players"]);
-    const imgURL    = getImageUrl(r);  // ← image from CSV
+    const imgURL    = getImageUrl(r);
+    const detailsHref = `/game.html?id=${encodeURIComponent(r._idx)}`;
 
-    // Thumbnail (shown if URL present)
+    // Make entire card clickable, but allow inner links to work
+    li.addEventListener("click", (e) => {
+      if (e.target.closest("a")) return; // don't hijack link clicks
+      location.href = detailsHref;
+    });
+    li.classList.add("is-clickable");
+
+    // Thumbnail
     let thumbWrap = null;
     if (imgURL) {
       thumbWrap = document.createElement("div");
@@ -434,11 +420,16 @@ function renderCards(rows){
       img.loading = "lazy";
       img.decoding = "async";
       img.referrerPolicy = "no-referrer";
-      img.onerror = () => thumbWrap.remove(); // hide if broken
+      img.onerror = () => thumbWrap.remove();
       thumbWrap.appendChild(img);
     }
 
-    const h = document.createElement("h3"); h.textContent = title;
+    const h = document.createElement("h3");
+    const hLink = document.createElement("a");
+    hLink.href = detailsHref;
+    hLink.textContent = title;
+    h.appendChild(hLink);
+
     const subtitle = document.createElement("div"); subtitle.className = "subtitle"; subtitle.textContent = mechanism || "—";
     const desc = document.createElement("div"); desc.className = "desc"; desc.textContent = shortDesc || normalizeStr(r["Long Description"]).slice(0, 180);
 
@@ -451,7 +442,6 @@ function renderCards(rows){
     if (dl1) links.appendChild(linkBtn(dl1, "Download"));
     if (dl2) links.appendChild(linkBtn(dl2, "Alt link"));
 
-    // Assemble card
     if (asList) {
       if (thumbWrap) li.append(thumbWrap);
       li.append(h, subtitle, desc, meta);

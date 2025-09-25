@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PnPFinder — Game Details</title>
+
+  <link rel="stylesheet" href="/css/style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js" defer></script>
+  <script type="module" src="/js/details.js" defer></script>
+  <meta name="color-scheme" content="dark light" />
+</head>
+<body>
+  <header class="site-header wrap" role="banner">
+    <div class="brand">
+      <h1><a class="brand-link" href="/">PnPFinder</a></h1>
+      <p class="tagline">Game details</p>
+    </div>
+  </header>
+
+  <main class="wrap" id="detailMain" role="main" aria-busy="true">
+    <article id="gameDetail" class="detail" hidden>
+      <header class="detail-hero">
+        <div class="thumb detail-thumb" id="detailThumb" aria-hidden="true"></div>
+        <div class="detail-head">
+          <h2 id="detailTitle">Game Title</h2>
+          <div class="byline" id="detailByline"></div>
+
+          <div class="detail-actions">
+            <a id="primaryDownload" class="btn primary" target="_blank" rel="noopener">Download</a>
+            <a id="secondaryDownload" class="btn secondary" target="_blank" rel="noopener" hidden>Alt link</a>
+            <a id="reportLink" class="btn danger" href="mailto:help@pnpfinder.com" rel="noopener">Report dead link</a>
+          </div>
+        </div>
+      </header>
+
+      <section class="detail-sections">
+        <section class="detail-section">
+          <h3>Overview</h3>
+          <p id="shortDesc" class="lead"></p>
+          <p id="longDesc"></p>
+        </section>
+
+        <section class="detail-section">
+          <h3>Quick Facts</h3>
+          <dl class="facts two-col">
+            <div><dt>Free or Paid</dt><dd id="freePaid"></dd></div>
+            <div><dt>Release Year</dt><dd id="releaseYear"></dd></div>
+            <div><dt>Players</dt><dd id="players"></dd></div>
+            <div><dt>Playtime</dt><dd id="playtime"></dd></div>
+            <div><dt>Age Range</dt><dd id="ageRange"></dd></div>
+            <div><dt>Theme</dt><dd id="theme"></dd></div>
+            <div><dt>Main Mechanism</dt><dd id="mainMech"></dd></div>
+            <div><dt>Secondary Mechanism</dt><dd id="secondaryMech"></dd></div>
+            <div><dt>Gameplay Complexity</dt><dd id="complexity"></dd></div>
+            <div><dt>Gameplay Mode</dt><dd id="mode"></dd></div>
+            <div><dt>Game Category</dt><dd id="category"></dd></div>
+            <div><dt>PnP Crafting Challenge</dt><dd id="crafting"></dd></div>
+            <div><dt>Languages</dt><dd id="languages"></dd></div>
+          </dl>
+        </section>
+
+        <section class="detail-section">
+          <h3>Components</h3>
+          <dl class="facts two-col">
+            <div><dt>Print Components</dt><dd id="printComponents"></dd></div>
+            <div><dt>Other Components</dt><dd id="otherComponents"></dd></div>
+          </dl>
+        </section>
+      </section>
+
+      <nav class="detail-back">
+        <a href="/" class="btn secondary">&larr; Back to results</a>
+      </nav>
+    </article>
+
+    <div id="notFound" class="empty-state" hidden>
+      <p>We couldn’t find that game. It may have been removed or the link is invalid.</p>
+      <p><a href="/" class="btn secondary">&larr; Back to results</a></p>
+    </div>
+  </main>
+
+  <footer class="site-footer wrap">
+    <small>© <span id="year"></span> PnPFinder</small>
+  </footer>
+</body>
+</html>
