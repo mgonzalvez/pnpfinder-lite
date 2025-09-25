@@ -148,7 +148,7 @@ body {
   border-radius: 10px;
 }
 
-/* Filter actions */
+/* Buttons */
 .filter-actions {
   display: flex;
   gap: .5rem;
@@ -293,15 +293,19 @@ button:focus-visible, .btn:focus-visible { outline: 3px solid var(--focus); outl
 
 /* ===== Game Details page ===== */
 .detail { display: grid; gap: 1.25rem; }
+
+/* Wider, cinematic image on the details page */
 .detail-hero {
   display: grid;
-  grid-template-columns: 250px 1fr;
+  grid-template-columns: minmax(320px, 720px) 1fr; /* image | text */
   gap: 1rem;
   align-items: start;
 }
 .detail-thumb {
-  width: 250px;
-  height: 250px;
+  width: 100%;
+  max-width: 720px;
+  aspect-ratio: 16 / 9;   /* wide hero */
+  height: auto;
   border-radius: 14px;
   overflow: hidden;
   background: var(--bg-elev);
@@ -346,6 +350,11 @@ button:focus-visible, .btn:focus-visible { outline: 3px solid var(--focus); outl
   border-radius: 14px;
   padding: 1rem;
   text-align: center;
+}
+
+/* Stack layout on narrower screens */
+@media (max-width: 900px) {
+  .detail-hero { grid-template-columns: 1fr; }
 }
 
 /* Footer */
