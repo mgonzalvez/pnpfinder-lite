@@ -240,17 +240,49 @@ button:focus-visible, .btn:focus-visible { outline: 3px solid var(--focus); outl
   object-fit: cover;
 }
 
-/* List view override (adds a narrow image column) */
+/* List view: two columns (image | content) */
 .list { display: block; }
+
 .list .card {
   display: grid;
-  grid-template-columns: 140px 2fr 3fr 1fr; /* image | title/mech | desc | meta/links */
-  gap: .75rem;
+  grid-template-columns: 140px 1fr;   /* image | content */
+  gap: 1rem;
   align-items: start;
 }
-.list .card h3 { font-size: 1rem; }
-.list .desc { color: var(--muted); }
-.list .card .thumb { aspect-ratio: 4 / 3; border-radius: 8px; }
+
+/* image column stays the same */
+.list .card .thumb {
+  aspect-ratio: 4 / 3;
+  border-radius: 8px;
+}
+
+/* right-side content stack */
+.list .list-body {
+  display: grid;
+  gap: .4rem;
+}
+
+/* title + mechanism block */
+.list .list-header {
+  display: grid;
+  gap: .15rem;
+}
+.list .list-header h3 { margin: 0; font-size: 1rem; }
+.list .list-header .subtitle { color: var(--muted); font-size: .95rem; }
+
+/* short description directly under title/mechanism */
+.list .desc {
+  color: var(--text);
+  opacity: .9;
+  margin-top: .1rem;
+}
+
+/* badges under the description */
+.list .meta { margin-top: .1rem; }
+
+/* download/actions under everything */
+.list .list-actions { margin-top: .25rem; }
+
 
 /* Pager */
 .pager {
