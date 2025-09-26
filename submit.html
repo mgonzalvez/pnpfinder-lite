@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PnPFinder — Submit an Entry</title>
+  <meta name="color-scheme" content="dark light" />
+  <link rel="stylesheet" href="/css/style.css" />
+  <script type="module" src="/js/submit.js" defer></script>
+</head>
+<body>
+  <header class="site-header wrap" role="banner">
+    <div class="brand">
+      <h1><a class="brand-link" href="/">PnPFinder</a></h1>
+      <p class="tagline">Submit a Game, Tutorial, or Resource.</p>
+
+      <nav class="top-nav" aria-label="Primary">
+        <a href="/" class="nav-link">Games</a>
+        <a href="/tutorials.html" class="nav-link">Tutorials</a>
+        <a href="/resources.html" class="nav-link">Resources</a>
+        <a href="/submit.html" class="nav-link active" aria-current="page">Submit</a>
+      </nav>
+    </div>
+
+    <div class="controls">
+      <div class="theme">
+        <button id="themeToggle" class="toggle" aria-pressed="false" title="Switch theme">Dark</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap" role="main">
+    <article class="detail-section" style="margin-top:1rem">
+      <h3>Submit an entry</h3>
+      <p style="margin-top:.25rem">Your submission will be reviewed automatically and added to the site. Admins may refine formatting or details later.</p>
+
+      <form id="submitForm" enctype="multipart/form-data">
+        <!-- honeypot (anti-spam) -->
+        <input type="text" name="website" aria-hidden="true" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px;height:0;width:0;padding:0;border:0;" />
+
+        <div class="filters-grid" style="margin-top:.75rem">
+          <div class="select">
+            <label for="collection">Type</label>
+            <select id="collection" name="collection" required>
+              <option value="games" selected>Game</option>
+              <option value="tutorials">Tutorial</option>
+              <option value="resources">Resource</option>
+            </select>
+          </div>
+
+          <div class="select">
+            <label for="image">Image (JPG/PNG/WebP, &lt; 5MB)</label>
+            <input id="image" name="image" type="file" accept="image/*" />
+          </div>
+        </div>
+
+        <!-- GAME FIELDS -->
+        <fieldset id="gameFields" class="detail-section" style="margin-top:1rem">
+          <legend>Game</legend>
+          <div class="filters-grid">
+            <div class="select"><label>Game Title<input name="Game Title" required /></label></div>
+            <div class="select"><label>Designer<input name="Designer" /></label></div>
+            <div class="select"><label>Publisher<input name="Publisher" /></label></div>
+            <div class="select">
+              <label>Free or Paid
+                <select name="Free or Paid">
+                  <option value="">—</option>
+                  <option>Free</option>
+                  <option>Paid</option>
+                </select>
+              </label>
+            </div>
+            <div class="select"><label>Price<input name="Price" placeholder="e.g., $0 / $5" /></label></div>
+            <div class="select"><label>Number of Players<input name="Number of Players" placeholder="1–4 or 1+" /></label></div>
+            <div class="select"><label>Playtime<input name="Playtime" placeholder="30–60" /></label></div>
+            <div class="select"><label>Age Range<input name="Age Range" placeholder="10+" /></label></div>
+            <div class="select"><label>Theme<input name="Theme" /></label></div>
+            <div class="select"><label>Main Mechanism<input name="Main Mechanism" /></label></div>
+            <div class="select"><label>Secondary Mechanism<input name="Secondary Mechanism" /></label></div>
+            <div class="select"><label>Gameplay Complexity<input name="Gameplay Complexity" placeholder="Light / Medium / Heavy" /></label></div>
+            <div class="select"><label>Gameplay Mode<input name="Gameplay Mode" placeholder="Solo / Cooperative / Competitive" /></label></div>
+            <div class="select"><label>Game Category<input name="Game Category" placeholder="Solo / Cooperative / Competitive" /></label></div>
+            <div class="select"><label>PnP Crafting Challenge Level<input name="PnP Crafting Challenge Level" placeholder="Low / Medium / High" /></label></div>
+            <div class="select"><label>Release Year<input name="Release Year" type="number" min="1900" max="2100" /></label></div>
+            <div class="select"><label>Languages<input name="Languages" placeholder="English; Spanish; …" /></label></div>
+            <div class="select" style="grid-column:1/-1"><label>One-Sentence Short Description<textarea name="One-Sentence Short Description" rows="2"></textarea></label></div>
+            <div class="select" style="grid-column:1/-1"><label>Long Description<textarea name="Long Description" rows="4"></textarea></label></div>
+            <div class="select"><label>Download Link<input name="Download Link" type="url" /></label></div>
+            <div class="select"><label>Secondary Download Link<input name="Secondary Download Link" type="url" /></label></div>
+            <div class="select"><label>Print Components<input name="Print Components" /></label></div>
+            <div class="select"><label>Other Components<input name="Other Components" /></label></div>
+            <div class="select"><label>Curated Lists<input name="Curated Lists" placeholder="Solo 2025; 18XX; …" /></label></div>
+          </div>
+        </fieldset>
+
+        <!-- TUTORIAL FIELDS -->
+        <fieldset id="tutorialFields" class="detail-section" style="margin-top:1rem;display:none">
+          <legend>Tutorial</legend>
+          <div class="filters-grid">
+            <div class="select"><label>Component<input name="Component" /></label></div>
+            <div class="select"><label>Title<input name="Title" /></label></div>
+            <div class="select"><label>Creator<input name="Creator" /></label></div>
+            <div class="select" style="grid-column:1/-1"><label>Description<textarea name="Description" rows="3"></textarea></label></div>
+            <div class="select"><label>Link<input name="Link" type="url" /></label></div>
+          </div>
+        </fieldset>
+
+        <!-- RESOURCE FIELDS -->
+        <fieldset id="resourceFields" class="detail-section" style="margin-top:1rem;display:none">
+          <legend>Resource</legend>
+          <div class="filters-grid">
+            <div class="select"><label>Category<input name="Category" /></label></div>
+            <div class="select"><label>Title<input name="Title" /></label></div>
+            <div class="select"><label>Creator<input name="Creator" /></label></div>
+            <div class="select" style="grid-column:1/-1"><label>Description<textarea name="Description" rows="3"></textarea></label></div>
+            <div class="select"><label>Link<input name="Link" type="url" /></label></div>
+          </div>
+        </fieldset>
+
+        <div class="filter-actions" style="margin-top:1rem">
+          <button type="submit" class="primary">Submit</button>
+          <button type="reset" class="secondary">Reset</button>
+        </div>
+
+        <p id="submitStatus" class="results-meta" role="status" style="margin-top:.75rem"></p>
+      </form>
+    </article>
+
+    <nav class="detail-back">
+      <a href="/" class="btn secondary">&larr; Back to Games</a>
+    </nav>
+  </main>
+
+  <footer class="site-footer wrap">
+    <small>© <span id="year"></span> PnPFinder</small>
+  </footer>
+</body>
+</html>
