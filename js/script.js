@@ -329,9 +329,11 @@ function safeLower(s){ return String(s || "").toLowerCase(); }
 
 function sortRows(rows){
   // Relevance = CSV order via _idx
-  if (sortBy === "relevance") {
-    return rows.slice().sort((a,b) => (a._idx ?? 0) - (b._idx ?? 0));
+  if (sortBy === "newest") {
+  // Newest = last rows appended to games.csv (row index descending)
+  return rows.slice().sort((a, b) => (b._idx ?? 0) - (a._idx ?? 0));
     }
+
   const byTitle = (a, b) => safeLower(a["Game Title"]).localeCompare(safeLower(b["Game Title"]), undefined, {numeric:true, sensitivity:"base"});
   const byYearDesc = (a, b) => (parseNumber(b["Release Year"]) ?? -Infinity) - (parseNumber(a["Release Year"]) ?? -Infinity);
   const byYearAsc  = (a, b) => (parseNumber(a["Release Year"]) ??  Infinity) - (parseNumber(b["Release Year"]) ??  Infinity);
