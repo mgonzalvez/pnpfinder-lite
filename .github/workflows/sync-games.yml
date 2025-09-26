@@ -1,52 +1,147 @@
-name: Sync games.csv from Google Sheets (direct commit)
+name: Sync games.csv from Google Sheets (direct commit, normalize from SHEET headers)
 
 on:
   schedule:
-    - cron: "*/30 * * * *"         # every 30 minutes (UTC)
-  workflow_dispatch:               # allow manual runs
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
 
 permissions:
-  contents: write                  # needed for committing to the repo
+  contents: write
 
 env:
   SHEETS_CSV_URL: "https://docs.google.com/spreadsheets/d/e/2PACX-1vTzMDg28m0vmjU9CKRH6a02NWp6Y__3Ysr7VnLG5zdmB6-mhFmomCPJa6Zs0FLkPHXaQx34oQmCoH7G/pub?gid=0&single=true&output=csv"
 
+  # Canonical column order used by the site (what we commit to the repo)
+  REQUIRED_HEADER: "Game Title,Designer,Publisher,Free or Paid,Price,Number of Players,Playtime,Age Range,Theme,Main Mechanism,Secondary Mechanism,Gameplay Complexity,Gameplay Mode,Game Category,PnP Crafting Challenge Level,One-Sentence Short Description,Long Description,Download Link,Secondary Download Link,Print Components,Other Components,Languages,Release Year,Game Image,Curated Lists,Report Dead Link"
+
 jobs:
   sync:
     runs-on: ubuntu-latest
-
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
 
       - name: Install tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y dos2unix
+          sudo apt-get install -y dos2unix python3
 
       - name: Download published CSV
         run: |
           mkdir -p data
-          curl -sSL "$SHEETS_CSV_URL" -o data/games.new.csv
-          # normalize line endings + strip UTF-8 BOM if present
-          dos2unix data/games.new.csv || true
-          sed -i '1s/^\xEF\xBB\xBF//' data/games.new.csv
+          curl -sSL "$SHEETS_CSV_URL" -o data/games.source.csv
+          dos2unix data/games.source.csv || true
+          # strip UTF-8 BOM if present
+          sed -i '1s/^\xEF\xBB\xBF//' data/games.source.csv
+          echo "SOURCE header:"
+          head -n 1 data/games.source.csv
 
-      - name: Validate CSV header (fail if mismatch)
+      - name: Normalize headers from SHEET to canonical
         run: |
-          REQUIRED="Game Title,Designer,Publisher,Free or Paid,Price,Number of Players,Playtime,Age Range,Theme,Main Mechanism,Secondary Mechanism,Gameplay Complexity,Gameplay Mode,Game Category,PnP Crafting Challenge Level,One-Sentence Short Description,Long Description,Download Link,Secondary Download Link,Print Components,Other Components,Languages,Release Year,Game Image,Curated Lists,Report Dead Link"
-          ACTUAL="$(head -n 1 data/games.new.csv | tr -d '\r')"
-          if [ "$ACTUAL" != "$REQUIRED" ]; then
-            echo "Header mismatch!"
-            echo "Expected: $REQUIRED"
-            echo "Actual:   $ACTUAL"
+          python3 - << 'PY'
+          import csv, re
+
+          SRC = "data/games.source.csv"
+          OUT = "data/games.normalized.csv"
+
+          # Canonical order (this is what your site expects)
+          CANON = [
+            "Game Title","Designer","Publisher","Free or Paid","Price","Number of Players",
+            "Playtime","Age Range","Theme","Main Mechanism","Secondary Mechanism",
+            "Gameplay Complexity","Gameplay Mode","Game Category","PnP Crafting Challenge Level",
+            "One-Sentence Short Description","Long Description","Download Link","Secondary Download Link",
+            "Print Components","Other Components","Languages","Release Year","Game Image",
+            "Curated Lists","Report Dead Link"
+          ]
+
+          # Normalize key (case/space/punct insensitive)
+          def norm(s): return re.sub(r"[^a-z0-9]+"," ", (s or "").strip().lower()).strip()
+
+          # Map your SHEET headers (all-caps) to canonical
+          ALIASES = {
+            norm("GAME TITLE"): "Game Title",
+            norm("DESIGNER"): "Designer",
+            norm("PUBLISHER"): "Publisher",
+            norm("FREE OR PAID"): "Free or Paid",
+            norm("PRICE"): "Price",
+            norm("NUMBER OF PLAYERS"): "Number of Players",
+            norm("PLAYTIME"): "Playtime",
+            norm("AGE RANGE"): "Age Range",
+            norm("THEME"): "Theme",
+            norm("MAIN MECHANISM"): "Main Mechanism",
+            norm("SECONDARY MECHANISM"): "Secondary Mechanism",
+            norm("GAMEPLAY COMPLEXITY"): "Gameplay Complexity",
+            norm("GAMEPLAY MODE"): "Gameplay Mode",
+            norm("GAME CATEGORY"): "Game Category",
+            norm("PNP CRAFTING CHALLENGE LEVEL"): "PnP Crafting Challenge Level",
+            norm("ONE-SENTENCE SHORT DESCRIPTION"): "One-Sentence Short Description",
+            norm("GAME DESCRIPTION"): "Long Description",              # <-- your sheet label
+            norm("DOWNLOAD LINK"): "Download Link",
+            norm("SECONDARY DOWNLOAD LINK"): "Secondary Download Link",
+            norm("PRINT COMPONENTS"): "Print Components",
+            norm("OTHER COMPONENTS"): "Other Components",
+            norm("LANGUAGES"): "Languages",
+            norm("RELEASE YEAR"): "Release Year",
+            norm("IMAGE"): "Game Image",                               # <-- your sheet label
+            norm("CURATED LISTS"): "Curated Lists",
+            norm("REPORT DEAD LINK"): "Report Dead Link",
+            # Extra column in sheet we ignore:
+            norm("DATE ADDED"): None,
+          }
+
+          with open(SRC, newline="", encoding="utf-8") as f:
+            r = csv.DictReader(f)
+            src_fields = r.fieldnames or []
+            # Build a map from incoming header → canonical
+            keymap = {}
+            for k in src_fields:
+              nk = norm(k)
+              if nk in ALIASES and ALIASES[nk] is not None:
+                keymap[k] = ALIASES[nk]
+              elif nk in [norm(c) for c in CANON]:
+                # already canonical but maybe different casing
+                # find the exact canonical name by normalized match
+                for c in CANON:
+                  if norm(c) == nk:
+                    keymap[k] = c
+                    break
+              else:
+                # Unknown column → ignore unless it matches a canonical directly
+                keymap[k] = None
+
+            rows = list(r)
+
+          # Write with canonical order only; fill missing with ""
+          with open(OUT, "w", newline="", encoding="utf-8") as g:
+            w = csv.DictWriter(g, fieldnames=CANON)
+            w.writeheader()
+            for row in rows:
+              outrow = {col: "" for col in CANON}
+              for k, v in row.items():
+                ck = keymap.get(k)
+                if ck in outrow:
+                  outrow[ck] = v
+              w.writerow(outrow)
+          PY
+          echo "NORMALIZED header:"
+          head -n 1 data/games.normalized.csv
+          echo "Rows:"
+          wc -l data/games.normalized.csv
+
+      - name: Validate normalized CSV
+        run: |
+          ACT="$(head -n 1 data/games.normalized.csv | tr -d '\r')"
+          echo "Normalized header: $ACT"
+          if [ "$ACT" != "$REQUIRED_HEADER" ]; then
+            echo "Normalized header mismatch."
             exit 1
           fi
-
-      - name: Basic sanity checks
-        run: |
-          ROWS=$(wc -l < data/games.new.csv || echo 0)
+          ROWS=$(wc -l < data/games.normalized.csv || echo 0)
           if [ "$ROWS" -lt 2 ]; then
-            echo "Downloaded CSV has no data rows; aborting."
+            echo "No data rows after normalization."
             exit 1
           fi
 
@@ -56,18 +151,27 @@ jobs:
           if [ ! -f data/games.csv ]; then
             echo "changed=true" >> $GITHUB_OUTPUT
           else
-            if diff -q data/games.csv data/games.new.csv >/dev/null 2>&1; then
+            if diff -q data/games.csv data/games.normalized.csv >/dev/null 2>&1; then
               echo "changed=false" >> $GITHUB_OUTPUT
             else
               echo "changed=true" >> $GITHUB_OUTPUT
             fi
           fi
 
-      - name: Commit to main if changed
+      - name: Commit & push (direct)
         if: steps.diff.outputs.changed == 'true'
         run: |
-          mv data/games.new.csv data/games.csv
+          mv data/games.normalized.csv data/games.csv
+          git config --global user.name  "pnpfinder-bot"
+          git config --global user.email "bot@users.noreply.github.com"
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
           git add data/games.csv
-          git -c user.name="pnpfinder-bot" -c user.email="bot@users.noreply.github.com" \
-            commit -m "chore: sync games.csv from Google Sheets"
-          git push
+          git fetch origin main
+          git checkout main
+          git pull --rebase origin main || true
+          if git diff --cached --quiet; then
+            echo "Nothing to commit."
+            exit 0
+          fi
+          git commit -m "chore: sync games.csv from Google Sheets (normalized from SHEET headers)"
+          git push origin main
