@@ -1,9 +1,7 @@
-/* PnPFinder — Submit page
-   - Vertical form (submit.html scoped CSS)
-   - Dropdowns populated from /data/games.csv
-   - Robust header aliasing so mismatched CSV headers still work
+/* PnPFinder — Submit page (robust)
+   - Dropdowns populated from /data/games.csv (with header aliasing)
    - Required fields + maxlength counters for short/long descriptions
-   - Image required only for "Game"
+   - Image required only for "Game" (now compressed client-side)
    - Posts JSON (with base64 image) to /api/submit (Cloudflare Pages Function)
 */
 
@@ -60,12 +58,10 @@ const el = {
   craft: document.getElementById("craft"),
 };
 
-// ---------- CSV population with robust header aliasing ----------
-
 const CSV_URL = "/data/games.csv";
 const MULTI_SEP = /[;,|]/;
 
-// Canonical headers we care about and their aliases (all lowercase)
+// --- Header aliasing (lowercased) ---
 const ALIASES = {
   "game title": ["game title","title","name"],
   "free or paid": ["free or paid","free/paid","pricing","price type","cost"],
@@ -79,43 +75,32 @@ const ALIASES = {
   "game category": ["game category","category","play style"],
   "pnp crafting challenge level": ["pnp crafting challenge level","pnp crafting challenge","crafting challenge","pnp challenge","crafting difficulty","crafting level"]
 };
-
 const aliasIndex = (() => {
   const idx = {};
-  for (const canon in ALIASES) {
-    for (const a of ALIASES[canon]) idx[a.toLowerCase()] = canon;
-  }
+  for (const canon in ALIASES) for (const a of ALIASES[canon]) idx[a] = canon;
   return idx;
 })();
-
 function canonicalizeRowKeys(row) {
   const out = {};
   for (const key in row) {
     const lc = (key || "").trim().toLowerCase();
-    const canon = aliasIndex[lc] || key; // fall back to original if not an alias
+    const canon = aliasIndex[lc] || key;
     out[canon] = row[key];
   }
   return out;
 }
 
 function addOptions(select, values, { placeholder = "— Select —" } = {}) {
-  // Clear and add placeholder
   select.innerHTML = "";
   const ph = document.createElement("option");
-  ph.value = "";
-  ph.textContent = placeholder;
-  ph.disabled = true;
-  ph.selected = true;
+  ph.value = ""; ph.textContent = placeholder; ph.disabled = true; ph.selected = true;
   select.appendChild(ph);
-  // Add options
   for (const v of values) {
     const opt = document.createElement("option");
-    opt.value = v;
-    opt.textContent = v;
+    opt.value = v; opt.textContent = v;
     select.appendChild(opt);
   }
 }
-
 function normalizeMode(v) {
   const s = String(v || "").trim().toLowerCase();
   if (!s) return "";
@@ -124,10 +109,7 @@ function normalizeMode(v) {
   if (s.includes("compet")) return "Competitive";
   return v.toString().trim();
 }
-
-function uniqSorted(arr) {
-  return [...new Set(arr.filter(Boolean))].sort((a,b)=>a.localeCompare(b, undefined, {numeric:true, sensitivity:"base"}));
-}
+function uniqSorted(arr) { return [...new Set(arr.filter(Boolean))].sort((a,b)=>a.localeCompare(b, undefined, {numeric:true, sensitivity:"base"})); }
 function collectDistinct(rows, canonKey, { split=false, mapFn=null } = {}) {
   const out = [];
   for (const r of rows) {
@@ -152,16 +134,9 @@ async function populateFromCSV() {
       if (!r.ok) throw new Error(`Failed to load ${CSV_URL} (${r.status})`);
       return r.text();
     });
-    const parsed = Papa.parse(text, {
-      header: true,
-      skipEmptyLines: true,
-      transformHeader: h => (h || "").replace(/^\uFEFF/,"").trim()
-    });
-
-    // Canonicalize keys using aliases
+    const parsed = Papa.parse(text, { header: true, skipEmptyLines: true, transformHeader: h => (h||"").replace(/^\uFEFF/,"").trim() });
     const rows = parsed.data.map(canonicalizeRowKeys);
 
-    // Build distinct lists from canonical keys
     let freePaid = uniqSorted(rows.map(r => {
       const v = String(r["free or paid"] || r["Free or Paid"] || "").trim().toLowerCase();
       if (!v) return "";
@@ -177,54 +152,35 @@ async function populateFromCSV() {
     let category   = collectDistinct(rows, "game category");
     let craft      = collectDistinct(rows, "pnp crafting challenge level");
 
-    // Fallbacks if a list came back empty
-    if (freePaid.length === 0) freePaid = ["Free","Paid"];
-    if (players.length === 0)  players  = ["1","1–2","1–4","2","2–4","3–6","4+"];
-    if (ageRange.length === 0) ageRange = ["8+","10+","12+","14+"];
-    if (complexity.length === 0) complexity = ["Light","Medium","Heavy"];
-    if (mode.length === 0) mode = ["Solo","Cooperative","Competitive"];
-    if (category.length === 0) category = ["Solo","Cooperative","Competitive"];
+    if (!freePaid.length) freePaid = ["Free","Paid"];
+    if (!players.length) players = ["1","1–2","1–4","2","2–4","3–6","4+"];
+    if (!ageRange.length) ageRange = ["8+","10+","12+","14+"];
+    if (!complexity.length) complexity = ["Light","Medium","Heavy"];
+    if (!mode.length) mode = ["Solo","Cooperative","Competitive"];
+    if (!category.length) category = ["Solo","Cooperative","Competitive"];
 
-    // Apply to selects
     addOptions(el.freePaid, freePaid);
     addOptions(el.players, players);
     addOptions(el.ageRange, ageRange);
     addOptions(el.theme, theme);
     addOptions(el.mainMech, mainMech);
 
-    // Secondary mechanism is optional; allow a blank and values
-    el.secondaryMech.innerHTML = "";
-    {
-      const blank = document.createElement("option");
-      blank.value = "";
-      blank.textContent = "—";
-      blank.selected = true;
-      el.secondaryMech.appendChild(blank);
-      for (const v of secondMech) {
-        const o = document.createElement("option");
-        o.value = v; o.textContent = v;
-        el.secondaryMech.appendChild(o);
-      }
+    el.secondaryMech.innerHTML = '<option value="" selected>—</option>';
+    for (const v of secondMech) {
+      const o = document.createElement("option"); o.value = o.textContent = v; el.secondaryMech.appendChild(o);
     }
-
     addOptions(el.complexity, complexity);
 
-    // Mode and Category are optional; include a blank first
-    el.mode.innerHTML = "";
-    { const blank = document.createElement("option"); blank.value=""; blank.textContent="—"; blank.selected=true; el.mode.appendChild(blank); }
+    el.mode.innerHTML = '<option value="" selected>—</option>';
     for (const v of mode) { const o=document.createElement("option"); o.value=v; o.textContent=v; el.mode.appendChild(o); }
 
-    el.category.innerHTML = "";
-    { const blank = document.createElement("option"); blank.value=""; blank.textContent="—"; blank.selected=true; el.category.appendChild(blank); }
+    el.category.innerHTML = '<option value="" selected>—</option>';
     for (const v of category) { const o=document.createElement("option"); o.value=v; o.textContent=v; el.category.appendChild(o); }
 
     addOptions(el.craft, craft);
-
-    console.info("[Submit] Dropdowns populated from CSV.");
   } catch (err) {
     console.error("[Submit] Populate dropdowns failed:", err);
-
-    // Graceful fallback so the form is still usable
+    // Fallbacks
     addOptions(el.freePaid, ["Free","Paid"]);
     addOptions(el.players, ["1","1–2","1–4","2","2–4","3–6","4+"]);
     addOptions(el.ageRange, ["8+","10+","12+","14+"]);
@@ -238,18 +194,12 @@ async function populateFromCSV() {
   }
 }
 
-// ---------- Visibility & required toggles ----------
-
 function showSection() {
   const v = collectionEl.value;
   gameFields.style.display = v === "games" ? "" : "none";
   tutorialFields.style.display = v === "tutorials" ? "" : "none";
   resourceFields.style.display = v === "resources" ? "" : "none";
-
-  // Image required only for games
   imageInput.required = (v === "games");
-
-  // Required for game fields when visible
   const requiredWhenGame = [
     el.freePaid, el.players, el.ageRange, el.theme, el.mainMech, el.complexity, el.craft,
     document.getElementById("gameTitle"),
@@ -259,94 +209,76 @@ function showSection() {
     document.getElementById("dl1"),
     document.getElementById("releaseYear"),
   ];
-  for (const ctrl of requiredWhenGame) {
-    if (!ctrl) continue;
-    if (v === "games") ctrl.setAttribute("required", "required");
-    else ctrl.removeAttribute("required");
-  }
+  for (const ctrl of requiredWhenGame) v === "games" ? ctrl?.setAttribute("required","required") : ctrl?.removeAttribute("required");
 }
 collectionEl.addEventListener("change", showSection);
 showSection();
 
-// ---------- Counters ----------
-
 function updateCounter(area, labelEl, max) {
-  const len = (area.value || "").length;
-  labelEl.textContent = `${len} / ${max}`;
+  labelEl.textContent = `${(area.value||"").length} / ${max}`;
 }
 shortDesc.addEventListener("input", () => updateCounter(shortDesc, shortCount, 125));
-longDesc.addEventListener("input",  () => updateCounter(longDesc,  longCount,  400));
+longDesc .addEventListener("input", () => updateCounter(longDesc , longCount , 400));
 updateCounter(shortDesc, shortCount, 125);
 updateCounter(longDesc,  longCount,  400);
 
-// ---------- Image to base64 ----------
-
-async function fileToBase64(file){
+// --- Image compression (max side 1600px, JPEG quality 0.82) ---
+async function compressImageToBase64(file) {
   if (!file) return null;
-  if (file.size > 5 * 1024 * 1024) throw new Error("Image too large (max 5MB).");
-  const buf = await file.arrayBuffer();
-  let binary = "";
-  const bytes = new Uint8Array(buf);
-  const chunk = 0x8000;
-  for (let i=0; i<bytes.length; i+=chunk) {
-    binary += String.fromCharCode.apply(null, bytes.subarray(i, i+chunk));
+  const img = await new Promise((res, rej) => {
+    const url = URL.createObjectURL(file);
+    const i = new Image();
+    i.onload = () => res({img: i, url});
+    i.onerror = rej;
+    i.src = url;
+  });
+  const {img: image, url} = img;
+  const maxSide = 1600;
+  const {width, height} = image;
+  let w = width, h = height;
+  if (Math.max(w,h) > maxSide) {
+    if (w >= h) { h = Math.round(h * (maxSide / w)); w = maxSide; }
+    else { w = Math.round(w * (maxSide / h)); h = maxSide; }
   }
-  return btoa(binary);
-}
+  const canvas = document.createElement("canvas");
+  canvas.width = w; canvas.height = h;
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(image, 0, 0, w, h);
+  URL.revokeObjectURL(url);
 
-// ---------- Extra validation ----------
+  const blob = await new Promise(res => canvas.toBlob(res, "image/jpeg", 0.82));
+  if (!blob) throw new Error("Could not process image.");
+  if (blob.size > 5 * 1024 * 1024) throw new Error("Compressed image still exceeds 5MB.");
+  const buf = await blob.arrayBuffer();
+  let binary = ""; const bytes = new Uint8Array(buf); const chunk = 0x8000;
+  for (let i=0; i<bytes.length; i+=chunk) binary += String.fromCharCode.apply(null, bytes.subarray(i, i+chunk));
+  return { base64: btoa(binary), contentType: "image/jpeg", filename: file.name.replace(/\.[^.]+$/,"") + ".jpg" };
+}
 
 function validateGameForm() {
   const v = collectionEl.value;
   if (v !== "games") return true;
-
-  if (shortDesc.value.length > 125) {
-    shortDesc.focus();
-    return "Short description must be 125 characters or fewer.";
-  }
-  if (longDesc.value.length > 400) {
-    longDesc.focus();
-    return "Long description must be 400 characters or fewer.";
-  }
+  if (shortDesc.value.length > 125) { shortDesc.focus(); return "Short description must be 125 characters or fewer."; }
+  if (longDesc.value.length > 400)  { longDesc.focus();  return "Long description must be 400 characters or fewer."; }
   const ry = document.getElementById("releaseYear").value.trim();
-  if (!/^\d{4}$/.test(ry) || +ry < 1900 || +ry > 2100) {
-    document.getElementById("releaseYear").focus();
-    return "Release Year must be a 4-digit year between 1900 and 2100.";
-  }
+  if (!/^\d{4}$/.test(ry) || +ry < 1900 || +ry > 2100) { document.getElementById("releaseYear").focus(); return "Release Year must be 1900–2100."; }
   const dl = document.getElementById("dl1").value.trim();
-  if (dl && !/^https?:\/\//i.test(dl)) {
-    document.getElementById("dl1").focus();
-    return "Main Download Link must be a valid http(s) URL.";
-  }
-  if (imageInput.required && !imageInput.files.length) {
-    imageInput.focus();
-    return "Please attach an image.";
-  }
+  if (dl && !/^https?:\/\//i.test(dl)) { document.getElementById("dl1").focus(); return "Main Download Link must be a valid http(s) URL."; }
+  if (imageInput.required && !imageInput.files.length) { imageInput.focus(); return "Please attach an image."; }
   return true;
 }
-
-// ---------- Submit ----------
 
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
   statusEl.textContent = "Submitting…";
   errorEl.style.display = "none"; errorEl.textContent = "";
 
-  // honeypot
   const honey = form.querySelector('input[name="website"]');
   if (honey && honey.value) { statusEl.textContent = "Submission blocked."; return; }
-
-  // Built-in browser validation
   if (!form.reportValidity()) { statusEl.textContent = "Please correct the highlighted fields."; return; }
 
-  // Extra game validation
   const valid = validateGameForm();
-  if (valid !== true) {
-    statusEl.textContent = "";
-    errorEl.textContent = valid;
-    errorEl.style.display = "";
-    return;
-  }
+  if (valid !== true) { statusEl.textContent = ""; errorEl.textContent = valid; errorEl.style.display = ""; return; }
 
   const collection = collectionEl.value;
   const data = { collection, fields: {}, image: null };
@@ -357,18 +289,17 @@ form.addEventListener("submit", async (e) => {
       data.fields[el.name] = el.value.trim();
     });
   };
-  collectInputs(gameFields);
-  collectInputs(tutorialFields);
-  collectInputs(resourceFields);
+  collectInputs(gameFields); collectInputs(tutorialFields); collectInputs(resourceFields);
 
-  // image
+  // image (compress)
   const file = imageInput.files && imageInput.files[0];
   if (file) {
     try {
+      const compressed = await compressImageToBase64(file);
       data.image = {
-        filename: file.name,
-        contentType: file.type || "application/octet-stream",
-        dataBase64: await fileToBase64(file)
+        filename: compressed.filename,
+        contentType: compressed.contentType,
+        dataBase64: compressed.base64
       };
     } catch (err) {
       statusEl.textContent = "";
@@ -379,26 +310,31 @@ form.addEventListener("submit", async (e) => {
   }
 
   try {
+    const ac = new AbortController();
+    const timer = setTimeout(()=>ac.abort(), 40000); // 40s safety timeout
     const res = await fetch("/api/submit", {
       method: "POST",
       headers: {"Content-Type": "application/json"},
-      body: JSON.stringify(data)
+      body: JSON.stringify(data),
+      signal: ac.signal
     });
-    const json = await res.json().catch(()=>({}));
-    if (!res.ok) throw new Error(json.error || res.statusText);
+    clearTimeout(timer);
+
+    let json = null;
+    try { json = await res.json(); } catch {}
+    if (!res.ok) throw new Error((json && json.error) || `HTTP ${res.status}`);
 
     statusEl.textContent = "✅ Submitted! It will appear after the site redeploys.";
-    form.reset();
-    showSection();
+    form.reset(); showSection();
     updateCounter(shortDesc, shortCount, 125);
     updateCounter(longDesc,  longCount,  400);
   } catch (err) {
     console.error(err);
     statusEl.textContent = "";
-    errorEl.textContent = "❌ " + (err.message || "Submission failed.");
+    errorEl.textContent = `❌ ${err.name === "AbortError" ? "Request timed out." : (err.message || "Submission failed.")}`;
     errorEl.style.display = "";
   }
 });
 
-// Start dropdown population once scripts are ready
+// Start dropdown population
 populateFromCSV();
