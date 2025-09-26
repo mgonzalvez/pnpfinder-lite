@@ -1,22 +1,24 @@
-/* PnPFinder — Games page (script.js)
-   - Loads /data/games.csv (Papa Parse required in index.html)
-   - Card/List views, live search with clear (×), filters, pagination with ellipses
+/* PnPFinder — Games page (robust script.js)
+   - Loads /data/games.csv (auto-injects Papa Parse if missing)
+   - Card/List views, live search (+ clear ×), dropdown filters, pagination w/ ellipses
    - Sorting: Relevance (CSV order), Newest (CSV row index desc), A–Z, Release Year (oldest)
-   - Dark/Light toggle persistence
-   - Image normalization for Google Drive / Dropbox
-   - Game details link: /game.html?id=<csvRowIndex>
+   - Dark/Light toggle (persisted)
+   - Safer DOM targeting (works if some IDs/classes differ)
+   - Helpful console logs if something goes wrong
 */
 
 (() => {
-  const CSV_URL = "/data/games.csv";
+  const CSV_PRIMARY = "/data/games.csv";
+  const CSV_FALLBACK = "data/games.csv"; // in case your host serves relative path
   const PAGE_SIZE = 25;
-  const STORAGE_KEYS = {
-    view: "pnp_view_mode",       // "cards" | "list"
-    sort: "pnp_sort_by",         // "relevance" | "newest" | "az" | "year"
-    theme: "theme",              // "dark" | "light"
+
+  const STORAGE = {
+    view: "pnp_view_mode",
+    sort: "pnp_sort_by",
+    theme: "theme",
   };
 
-  // Columns used around the app (canonical names)
+  // Canonical column names
   const COLS = {
     TITLE: "Game Title",
     DESIGNER: "Designer",
@@ -46,7 +48,7 @@
     REPORT: "Report Dead Link"
   };
 
-  // Filters to show at top (dropdowns)
+  // Filters shown at top
   const FILTERS = [
     { key: "curated",  col: COLS.LISTS,        label: "Curated Lists" },
     { key: "craft",    col: COLS.CRAFT,        label: "PnP Crafting Challenge" },
@@ -61,63 +63,77 @@
     { key: "lang",     col: COLS.LANG,         label: "Languages" },
   ];
 
-  // DOM
-  const els = {
-    results: document.getElementById("results"),
-    pagination: document.getElementById("pagination"),
-    resultsMeta: document.getElementById("resultsMeta"),
-    search: document.getElementById("searchInput") || document.querySelector('input[type="search"]'),
-    sort: document.getElementById("sortSelect") || document.querySelector('[data-sort]') || document.getElementById("sort"),
-    viewCards: document.getElementById("viewCards"),
-    viewList: document.getElementById("viewList"),
-    filtersWrap: document.getElementById("filters"),
-    applyBtn: document.getElementById("applyFilters"),
-    clearBtn: document.getElementById("clearFilters"),
-    themeToggle: document.getElementById("themeToggle"),
-    header: document.querySelector(".site-header"),
+  // ---------- DOM helpers ----------
+  const pick = (...sels) => {
+    for (const s of sels) {
+      if (!s) continue;
+      const el = typeof s === "string" ? document.querySelector(s) : s;
+      if (el) return el;
+    }
+    return null;
   };
 
-  // State
-  let allGames = [];
-  let filtered = [];
-  let currentPage = 1;
-  let viewMode = localStorage.getItem(STORAGE_KEYS.view) || "cards";
-  let sortBy = localStorage.getItem(STORAGE_KEYS.sort) || "relevance";
-  let searchTerm = "";
-  const activeFilters = {}; // key -> value string (dropdown selection)
+  const els = {
+    results:     pick("#results", "#gameResults", ".results", ".results-grid"),
+    pagination:  pick("#pagination", ".pagination"),
+    resultsMeta: pick("#resultsMeta", ".results-meta"),
+    search:      pick("#searchInput", 'input[type="search"]', '#q'),
+    sort:        pick("#sortSelect", "#sort", "[data-sort]"),
+    viewCards:   pick("#viewCards", '[data-view="cards"]'),
+    viewList:    pick("#viewList",  '[data-view="list"]'),
+    filtersWrap: pick("#filters", ".filters"),
+    applyBtn:    pick("#applyFilters", ".filters-apply"),
+    clearBtn:    pick("#clearFilters", ".filters-clear"),
+    themeToggle: pick("#themeToggle", ".theme .toggle"),
+    header:      pick(".site-header"),
+  };
 
-  // ===== Utils =====
+  // Create a fallback results container if missing (prevents "nothing shows")
+  if (!els.results) {
+    const main = pick("main", "#main", "body");
+    const div = document.createElement("div");
+    div.id = "results";
+    div.className = "results-grid";
+    main.appendChild(div);
+    els.results = div;
+    console.warn("[PnPFinder] #results container was missing; created a fallback.");
+  }
+
+  // ---------- State ----------
+  let allGames = [];
+  let currentPage = 1;
+  let viewMode = localStorage.getItem(STORAGE.view) || "cards";
+  let sortBy   = localStorage.getItem(STORAGE.sort) || "relevance";
+  let searchTerm = "";
+  const activeFilters = {};
+
+  // ---------- Utils ----------
   const MULTI_SEP = /[;|,]/;
-  const TRIM = s => String(s ?? "").trim();
+  const TRIM = (s) => String(s ?? "").trim();
+
+  function htmlEscape(str) {
+    return String(str ?? "").replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
 
   function normalizeImageUrl(url) {
     const s = TRIM(url);
     if (!s) return "";
     // Google Drive
     const driveIdMatch = s.match(/(?:\/d\/|id=)([A-Za-z0-9_-]{10,})/);
-    if (driveIdMatch) {
-      return `https://drive.google.com/uc?export=view&id=${driveIdMatch[1]}`;
-    }
-    // Dropbox share -> dl=1
-    if (/dropbox\.com/.test(s) && !/dl=1/.test(s)) {
-      return s.replace(/(\?dl=\d)?$/, "?dl=1");
-    }
+    if (driveIdMatch) return `https://drive.google.com/uc?export=view&id=${driveIdMatch[1]}`;
+    // Dropbox
+    if (/dropbox\.com/.test(s) && !/dl=1/.test(s)) return s.replace(/(\?dl=\d)?$/, "?dl=1");
     return s;
   }
 
-  function htmlEscape(str) {
-    return String(str ?? "").replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  }
-
   function getTitle(g) { return TRIM(g[COLS.TITLE] || g.Title); }
-  function getYear(g) { const y = parseInt(TRIM(g[COLS.YEAR])); return Number.isFinite(y) ? y : -Infinity; }
+  function getYear(g)  { const y = parseInt(TRIM(g[COLS.YEAR])); return Number.isFinite(y) ? y : -Infinity; }
 
-  // Range helpers (for basic intersection checks like "1–4" vs "2+" etc.)
   function parseRange(value) {
-    const v = TRIM(value).replace(/[–—]/g, "-"); // en dash -> hyphen
+    const v = TRIM(value).replace(/[–—]/g, "-"); // unify dash
     if (!v) return null;
     if (/^\d+\+$/.test(v)) return { min: parseInt(v), max: Infinity };
-    if (/^\d+$/.test(v)) return { min: parseInt(v), max: parseInt(v) };
+    if (/^\d+$/.test(v))   return { min: parseInt(v), max: parseInt(v) };
     const m = v.match(/^(\d+)\s*-\s*(\d+)$/);
     if (m) return { min: parseInt(m[1]), max: parseInt(m[2]) };
     return null;
@@ -127,51 +143,21 @@
     return a.min <= b.max && b.min <= a.max;
   }
 
-  // ===== Sorting =====
+  // ---------- Sorting ----------
   function sortGames(list, sortKey) {
-    const byIdxAsc = (a, b) => (a._idx ?? 0) - (b._idx ?? 0);
+    const byIdxAsc  = (a, b) => (a._idx ?? 0) - (b._idx ?? 0);
     const byIdxDesc = (a, b) => (b._idx ?? 0) - (a._idx ?? 0);
     switch (sortKey) {
-      case "newest":
-        // Newest = last rows appended to CSV (row index descending)
-        return list.slice().sort(byIdxDesc);
-      case "az":
-        return list.slice().sort((a, b) => getTitle(a).localeCompare(getTitle(b), undefined, { sensitivity: "base" }));
-      case "year":
-        // Oldest first (as established). Flip the comparator for newest-year-first.
-        return list.slice().sort((a, b) => getYear(a) - getYear(b));
+      case "newest":   return list.slice().sort(byIdxDesc); // last rows appended first
+      case "az":       return list.slice().sort((a,b)=>getTitle(a).localeCompare(getTitle(b), undefined, {sensitivity:"base"}));
+      case "year":     return list.slice().sort((a,b)=>getYear(a) - getYear(b)); // oldest first
       case "relevance":
-      default:
-        // Relevance = original CSV order (row index ascending)
-        return list.slice().sort(byIdxAsc);
+      default:         return list.slice().sort(byIdxAsc);   // original CSV order
     }
   }
 
-  // ===== Rendering =====
-  function setViewMode(mode) {
-    viewMode = mode === "list" ? "list" : "cards";
-    localStorage.setItem(STORAGE_KEYS.view, viewMode);
-    els.viewCards && els.viewCards.setAttribute("aria-pressed", String(viewMode === "cards"));
-    els.viewList && els.viewList.setAttribute("aria-pressed", String(viewMode === "list"));
-    render();
-  }
-
-  function setSort(value) {
-    sortBy = value || "relevance";
-    localStorage.setItem(STORAGE_KEYS.sort, sortBy);
-    currentPage = 1;
-    render();
-  }
-
-  function paginate(list) {
-    const total = list.length;
-    const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-    if (currentPage > totalPages) currentPage = totalPages;
-    const start = (currentPage - 1) * PAGE_SIZE;
-    return { pageItems: list.slice(start, start + PAGE_SIZE), totalPages, total };
-  }
-
-  function renderImage(src, alt, mode = "card") {
+  // ---------- Render helpers ----------
+  function renderImage(src, alt, mode="card") {
     const url = normalizeImageUrl(src);
     const a = htmlEscape(alt || "");
     if (!url) return `<div class="thumb thumb--placeholder" aria-hidden="true"></div>`;
@@ -180,19 +166,16 @@
   }
 
   function renderCard(g) {
-    const title = htmlEscape(getTitle(g));
-    const mech = htmlEscape(TRIM(g[COLS.MAIN_MECH]));
-    const short = htmlEscape(TRIM(g[COLS.SHORT]));
-    const cat = htmlEscape(TRIM(g[COLS.CATEGORY] || g[COLS.MODE]));
+    const title   = htmlEscape(getTitle(g));
+    const mech    = htmlEscape(TRIM(g[COLS.MAIN_MECH]));
+    const short   = htmlEscape(TRIM(g[COLS.SHORT]));
+    const cat     = htmlEscape(TRIM(g[COLS.CATEGORY] || g[COLS.MODE]));
     const players = htmlEscape(TRIM(g[COLS.PLAYERS]));
-    const img = TRIM(g[COLS.IMAGE]);
-    const detailsHref = `/game.html?id=${encodeURIComponent(g._idx)}`;
-
+    const img     = TRIM(g[COLS.IMAGE]);
+    const href    = `/game.html?id=${encodeURIComponent(g._idx)}`;
     return `
-      <a class="card" href="${detailsHref}">
-        <div class="card-media">
-          ${renderImage(img, title, "card")}
-        </div>
+      <a class="card" href="${href}">
+        <div class="card-media">${renderImage(img, title, "card")}</div>
         <div class="card-body">
           <h3 class="card-title">${title}</h3>
           <p class="card-subtitle">${mech || "&nbsp;"}</p>
@@ -207,22 +190,21 @@
   }
 
   function renderListItem(g) {
-    const title = htmlEscape(getTitle(g));
-    const mech = htmlEscape(TRIM(g[COLS.MAIN_MECH]));
-    const short = htmlEscape(TRIM(g[COLS.SHORT]));
+    const title   = htmlEscape(getTitle(g));
+    const mech    = htmlEscape(TRIM(g[COLS.MAIN_MECH]));
+    const short   = htmlEscape(TRIM(g[COLS.SHORT]));
     const players = htmlEscape(TRIM(g[COLS.PLAYERS]));
-    const img = TRIM(g[COLS.IMAGE]);
-    const detailsHref = `/game.html?id=${encodeURIComponent(g._idx)}`;
-    const dl = TRIM(g[COLS.DL1]);
-
+    const img     = TRIM(g[COLS.IMAGE]);
+    const href    = `/game.html?id=${encodeURIComponent(g._idx)}`;
+    const dl      = TRIM(g[COLS.DL1]);
     return `
       <div class="list-item">
-        <a class="list-media" href="${detailsHref}" aria-label="${title}">
+        <a class="list-media" href="${href}" aria-label="${title}">
           ${renderImage(img, title, "list")}
         </a>
         <div class="list-body">
           <div class="list-headline">
-            <a class="list-title" href="${detailsHref}">${title}</a>
+            <a class="list-title" href="${href}">${title}</a>
             <div class="list-subtitle">${mech || "&nbsp;"}</div>
           </div>
           <p class="list-desc">${short || ""}</p>
@@ -237,164 +219,32 @@
 
   function renderPagination(totalPages) {
     if (!els.pagination) return;
-    const windowSize = 2;
+    if (totalPages <= 1) { els.pagination.innerHTML = ""; return; }
+
     const parts = [];
+    const windowSize = 2;
+    const btn = (n, label=n, active=false) =>
+      `<button class="page ${active?"active":""}" data-page="${n}">${label}</button>`;
 
-    function pageBtn(n, label = n, active = false, disabled = false) {
-      return `<button class="page ${active ? "active":""}" data-page="${n}" ${disabled ? "disabled":""}>${label}</button>`;
-    }
-
-    if (totalPages <= 1) {
-      els.pagination.innerHTML = "";
-      return;
-    }
-
-    // First
-    parts.push(pageBtn(1, "1", currentPage === 1));
-
-    // Leading ellipsis
+    parts.push(btn(1, "1", currentPage === 1));
     if (currentPage - windowSize > 2) parts.push(`<span class="ellipsis">…</span>`);
-
-    // Middle window
     const start = Math.max(2, currentPage - windowSize);
-    const end = Math.min(totalPages - 1, currentPage + windowSize);
-    for (let i = start; i <= end; i++) {
-      parts.push(pageBtn(i, String(i), currentPage === i));
-    }
-
-    // Trailing ellipsis
+    const end   = Math.min(totalPages - 1, currentPage + windowSize);
+    for (let i = start; i <= end; i++) parts.push(btn(i, String(i), currentPage === i));
     if (currentPage + windowSize < totalPages - 1) parts.push(`<span class="ellipsis">…</span>`);
-
-    // Last
-    if (totalPages > 1) parts.push(pageBtn(totalPages, String(totalPages), currentPage === totalPages));
+    if (totalPages > 1) parts.push(btn(totalPages, String(totalPages), currentPage === totalPages));
 
     els.pagination.innerHTML = parts.join("");
   }
 
-  function render() {
-    // Filter → search → sort → paginate
-    const afterFilters = applyFilters(allGames);
-    const afterSearch = applySearch(afterFilters, searchTerm);
-    const sorted = sortGames(afterSearch, sortBy);
-    const { pageItems, totalPages, total } = paginate(sorted);
-
-    // Results meta
-    if (els.resultsMeta) {
-      const start = total ? (currentPage - 1) * PAGE_SIZE + 1 : 0;
-      const end = Math.min(currentPage * PAGE_SIZE, total);
-      els.resultsMeta.textContent = `${start}-${end} of ${total} games`;
-    }
-
-    // Results list
-    if (els.results) {
-      els.results.setAttribute("data-view", viewMode);
-      els.results.innerHTML = viewMode === "list"
-        ? pageItems.map(renderListItem).join("")
-        : pageItems.map(renderCard).join("");
-    }
-
-    // Pagination
-    renderPagination(totalPages);
+  function paginate(list) {
+    const total = list.length;
+    const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+    if (currentPage > totalPages) currentPage = totalPages;
+    const start = (currentPage - 1) * PAGE_SIZE;
+    return { pageItems: list.slice(start, start + PAGE_SIZE), totalPages, total };
   }
 
-  // ===== Filters =====
-  function buildFiltersUI(items) {
-    if (!els.filtersWrap) return;
-    const makeId = key => `filter-${key}`;
-    const valueSets = {};
-
-    // Collect unique values for each filter
-    for (const f of FILTERS) {
-      const set = new Set();
-      for (const g of items) {
-        const raw = TRIM(g[f.col]);
-        if (!raw) continue;
-        // Some columns may be multi-valued (e.g., Languages)
-        if (MULTI_SEP.test(raw)) {
-          raw.split(MULTI_SEP).forEach(x => set.add(TRIM(x)));
-        } else {
-          set.add(raw);
-        }
-      }
-      valueSets[f.key] = [...set].sort((a,b)=>a.localeCompare(b, undefined, {numeric:true, sensitivity:"base"}));
-    }
-
-    // Build HTML
-    els.filtersWrap.innerHTML = FILTERS.map(f => {
-      const id = makeId(f.key);
-      const options = [`<option value="">— ${f.label} —</option>`]
-        .concat(valueSets[f.key].map(v => `<option value="${htmlEscape(v)}">${htmlEscape(v)}</option>`))
-        .join("");
-      return `
-        <div class="select">
-          <label for="${id}">${f.label}</label>
-          <select id="${id}" data-filter="${f.key}">
-            ${options}
-          </select>
-        </div>
-      `;
-    }).join("");
-
-    // Hook up listeners
-    els.filtersWrap.querySelectorAll("select[data-filter]").forEach(sel => {
-      sel.addEventListener("change", () => {
-        const key = sel.getAttribute("data-filter");
-        const val = sel.value;
-        if (val) activeFilters[key] = val; else delete activeFilters[key];
-        currentPage = 1;
-        render();
-      });
-    });
-
-    // Apply / Clear
-    els.applyBtn && els.applyBtn.addEventListener("click", (e) => { e.preventDefault(); currentPage = 1; render(); });
-    els.clearBtn && els.clearBtn.addEventListener("click", (e) => {
-      e.preventDefault();
-      Object.keys(activeFilters).forEach(k => delete activeFilters[k]);
-      els.filtersWrap.querySelectorAll("select[data-filter]").forEach(s => s.value = "");
-      currentPage = 1;
-      render();
-    });
-  }
-
-  function applyFilters(items) {
-    // If no filters active:
-    if (!Object.keys(activeFilters).length) return items;
-
-    return items.filter(g => {
-      for (const f of FILTERS) {
-        const sel = activeFilters[f.key];
-        if (!sel) continue;
-        const raw = TRIM(g[f.col]);
-
-        if (!raw) return false;
-
-        // Special handling for range-ish columns
-        if (f.key === "players" || f.key === "time" || f.key === "age") {
-          const r1 = parseRange(sel);
-          const r2 = parseRange(raw);
-          if (r1 && r2) {
-            if (!rangesIntersect(r1, r2)) return false;
-            continue;
-          }
-          // Fallback to substring
-        }
-
-        // Multi-valued fields (Languages, Curated Lists)
-        if (MULTI_SEP.test(raw)) {
-          const parts = raw.split(MULTI_SEP).map(TRIM);
-          if (!parts.includes(sel)) return false;
-          continue;
-        }
-
-        // Exact match (case-insensitive)
-        if (TRIM(raw).toLowerCase() !== sel.toLowerCase()) return false;
-      }
-      return true;
-    });
-  }
-
-  // ===== Search =====
   function applySearch(items, q) {
     q = TRIM(q).toLowerCase();
     if (!q) return items;
@@ -404,21 +254,76 @@
       COLS.THEME, COLS.MAIN_MECH, COLS.SECOND_MECH,
       COLS.CATEGORY, COLS.MODE, COLS.LANG, COLS.LISTS
     ];
+    return items.filter(g => fields.some(f => TRIM(g[f]).toLowerCase().includes(q)));
+  }
+
+  function applyFilters(items) {
+    if (!Object.keys(activeFilters).length) return items;
+
     return items.filter(g => {
-      for (const f of fields) {
-        const v = TRIM(g[f]).toLowerCase();
-        if (v && v.includes(q)) return true;
+      for (const f of FILTERS) {
+        const sel = activeFilters[f.key];
+        if (!sel) continue;
+        const raw = TRIM(g[f.col]);
+        if (!raw) return false;
+
+        if (f.key === "players" || f.key === "time" || f.key === "age") {
+          const r1 = parseRange(sel);
+          const r2 = parseRange(raw);
+          if (r1 && r2) { if (!rangesIntersect(r1, r2)) return false; continue; }
+        }
+        if (MULTI_SEP.test(raw)) {
+          const parts = raw.split(MULTI_SEP).map(TRIM);
+          if (!parts.includes(sel)) return false;
+          continue;
+        }
+        if (raw.toLowerCase() !== sel.toLowerCase()) return false;
       }
-      return false;
+      return true;
     });
+  }
+
+  function render() {
+    const filtered = applyFilters(allGames);
+    const searched = applySearch(filtered, searchTerm);
+    const sorted   = sortGames(searched, sortBy);
+    const { pageItems, totalPages, total } = paginate(sorted);
+
+    if (els.resultsMeta) {
+      const start = total ? (currentPage - 1) * PAGE_SIZE + 1 : 0;
+      const end = Math.min(currentPage * PAGE_SIZE, total);
+      els.resultsMeta.textContent = `${start}-${end} of ${total} games`;
+    }
+
+    if (els.results) {
+      els.results.setAttribute("data-view", viewMode);
+      els.results.innerHTML = (viewMode === "list")
+        ? pageItems.map(renderListItem).join("")
+        : pageItems.map(renderCard).join("");
+    }
+
+    renderPagination(totalPages);
+  }
+
+  // ---------- UI wiring ----------
+  function setViewMode(mode) {
+    viewMode = mode === "list" ? "list" : "cards";
+    localStorage.setItem(STORAGE.view, viewMode);
+    els.viewCards && els.viewCards.setAttribute("aria-pressed", String(viewMode === "cards"));
+    els.viewList  && els.viewList.setAttribute("aria-pressed", String(viewMode === "list"));
+    render();
+  }
+  function setSort(val) {
+    sortBy = val || "relevance";
+    localStorage.setItem(STORAGE.sort, sortBy);
+    currentPage = 1;
+    render();
   }
 
   function buildSearchClearButton() {
     if (!els.search) return;
-    // If the HTML already has an "x", skip; else add one after the input
     let wrap = els.search.parentElement;
     if (!wrap || !wrap.classList.contains("search-wrap")) {
-      // Create a simple wrapper to position the clear button
       const w = document.createElement("div");
       w.className = "search-wrap";
       els.search.replaceWith(w);
@@ -434,61 +339,88 @@
       clearBtn.textContent = "×";
       wrap.appendChild(clearBtn);
     }
-    function syncClear() {
-      clearBtn.style.visibility = els.search.value ? "visible" : "hidden";
-    }
-    els.search.addEventListener("input", () => {
-      searchTerm = els.search.value;
-      currentPage = 1;
-      render();
-      syncClear();
-    });
+    const sync = () => { clearBtn.style.visibility = els.search.value ? "visible" : "hidden"; };
+    els.search.addEventListener("input", () => { searchTerm = els.search.value; currentPage = 1; render(); sync(); });
     els.search.addEventListener("keydown", (e) => {
-      if (e.key === "Escape") {
-        els.search.value = "";
-        searchTerm = "";
-        currentPage = 1;
-        render();
-        syncClear();
-      }
+      if (e.key === "Escape") { els.search.value = ""; searchTerm = ""; currentPage = 1; render(); sync(); }
     });
     clearBtn.addEventListener("click", () => {
-      els.search.value = "";
-      searchTerm = "";
-      currentPage = 1;
-      render();
-      syncClear();
-      els.search.focus();
+      els.search.value = ""; searchTerm = ""; currentPage = 1; render(); sync(); els.search.focus();
     });
-    syncClear();
+    sync();
   }
 
-  // ===== Theme toggle =====
+  function initFiltersUI(items) {
+    if (!els.filtersWrap) return;
+    const valueSets = {};
+    // Collect values
+    for (const f of FILTERS) {
+      const set = new Set();
+      for (const g of items) {
+        const raw = TRIM(g[f.col]);
+        if (!raw) continue;
+        if (MULTI_SEP.test(raw)) raw.split(MULTI_SEP).forEach(x => set.add(TRIM(x)));
+        else set.add(raw);
+      }
+      valueSets[f.key] = [...set].sort((a,b)=>a.localeCompare(b, undefined, {numeric:true, sensitivity:"base"}));
+    }
+    // Build
+    els.filtersWrap.innerHTML = FILTERS.map(f => {
+      const opts = [`<option value="">— ${f.label} —</option>`]
+        .concat(valueSets[f.key].map(v => `<option value="${htmlEscape(v)}">${htmlEscape(v)}</option>`))
+        .join("");
+      const id = `filter-${f.key}`;
+      return `
+        <div class="select">
+          <label for="${id}">${f.label}</label>
+          <select id="${id}" data-filter="${f.key}">${opts}</select>
+        </div>
+      `;
+    }).join("");
+
+    els.filtersWrap.querySelectorAll("select[data-filter]").forEach(sel => {
+      sel.addEventListener("change", () => {
+        const key = sel.getAttribute("data-filter");
+        const val = sel.value;
+        if (val) activeFilters[key] = val; else delete activeFilters[key];
+        currentPage = 1;
+        render();
+      });
+    });
+
+    els.applyBtn && els.applyBtn.addEventListener("click", (e) => { e.preventDefault(); currentPage = 1; render(); });
+    els.clearBtn && els.clearBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      Object.keys(activeFilters).forEach(k => delete activeFilters[k]);
+      els.filtersWrap.querySelectorAll("select[data-filter]").forEach(s => s.value = "");
+      currentPage = 1;
+      render();
+    });
+  }
+
   function initTheme() {
     const btn = els.themeToggle;
     if (!btn) return;
-    function setTheme(theme) {
-      const t = theme === "light" ? "light" : "dark";
-      document.documentElement.setAttribute("data-theme", t);
-      localStorage.setItem(STORAGE_KEYS.theme, t);
-      btn.textContent = t === "light" ? "Light" : "Dark";
-      btn.setAttribute("aria-pressed", String(t === "light"));
-      btn.title = t === "light" ? "Switch to dark mode" : "Switch to light mode";
-    }
-    setTheme(localStorage.getItem(STORAGE_KEYS.theme) || "dark");
+    const set = (t) => {
+      const theme = t === "light" ? "light" : "dark";
+      document.documentElement.setAttribute("data-theme", theme);
+      localStorage.setItem(STORAGE.theme, theme);
+      btn.textContent = theme === "light" ? "Light" : "Dark";
+      btn.setAttribute("aria-pressed", String(theme === "light"));
+      btn.title = theme === "light" ? "Switch to dark mode" : "Switch to light mode";
+    };
+    set(localStorage.getItem(STORAGE.theme) || "dark");
     btn.addEventListener("click", () => {
       const next = document.documentElement.getAttribute("data-theme") === "light" ? "dark" : "light";
-      setTheme(next);
+      set(next);
     });
   }
 
-  // ===== Events =====
   function initEvents() {
-    els.viewCards && els.viewCards.addEventListener("click", (e) => { e.preventDefault(); setViewMode("cards"); });
-    els.viewList && els.viewList.addEventListener("click", (e) => { e.preventDefault(); setViewMode("list"); });
+    els.viewCards && els.viewCards.addEventListener("click", (e)=>{ e.preventDefault(); setViewMode("cards"); });
+    els.viewList  && els.viewList.addEventListener("click", (e)=>{ e.preventDefault(); setViewMode("list"); });
 
     if (els.sort) {
-      // Ensure select reflects current value
       if ("value" in els.sort) els.sort.value = sortBy;
       els.sort.addEventListener("change", () => setSort(els.sort.value));
     }
@@ -497,57 +429,82 @@
       const btn = e.target.closest("button.page");
       if (!btn) return;
       const n = parseInt(btn.getAttribute("data-page"), 10);
-      if (Number.isFinite(n)) {
-        currentPage = n;
-        render();
-        window.scrollTo({ top: (els.header?.offsetHeight || 0), behavior: "smooth" });
-      }
+      if (Number.isFinite(n)) { currentPage = n; render(); window.scrollTo({ top: (els.header?.offsetTop || 0), behavior: "smooth" }); }
     });
   }
 
-  // ===== Data load =====
-  function loadCSV() {
+  // ---------- CSV loader ----------
+  async function ensurePapa() {
+    if (window.Papa) return;
+    await new Promise((resolve, reject) => {
+      const s = document.createElement("script");
+      s.src = "https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js";
+      s.async = true;
+      s.onload = resolve;
+      s.onerror = () => reject(new Error("Failed to load Papa Parse CDN"));
+      document.head.appendChild(s);
+    });
+  }
+
+  function parseCSV(text) {
     return new Promise((resolve, reject) => {
-      if (!window.Papa) {
-        reject(new Error("Papa Parse is required on this page."));
-        return;
+      try {
+        const res = Papa.parse(text, {
+          header: true,
+          skipEmptyLines: true,
+          transformHeader: (h) => (h || "").replace(/^\uFEFF/, "").trim(),
+        });
+        if (res.errors && res.errors.length) {
+          console.warn("[PnPFinder] CSV parse warnings:", res.errors);
+        }
+        resolve(res.data);
+      } catch (e) {
+        reject(e);
       }
-      Papa.parse(CSV_URL, {
-        download: true,
-        header: true,
-        skipEmptyLines: true,
-        transformHeader: (h) => (h || "").replace(/^\uFEFF/, "").trim(),
-        complete: (res) => resolve(res.data),
-        error: (err) => reject(err),
-      });
     });
   }
 
+  async function loadCSV() {
+    await ensurePapa();
+    let text = null;
+    try {
+      const r1 = await fetch(CSV_PRIMARY, { cache: "no-store" });
+      if (r1.ok) text = await r1.text();
+      else throw new Error(`${CSV_PRIMARY} ${r1.status}`);
+    } catch {
+      const r2 = await fetch(CSV_FALLBACK, { cache: "no-store" });
+      if (!r2.ok) throw new Error(`${CSV_FALLBACK} ${r2.status}`);
+      text = await r2.text();
+    }
+    const rows = await parseCSV(text);
+    // Filter out fully-empty rows and attach stable CSV index
+    const clean = rows.filter(r => Object.values(r).some(v => TRIM(v)));
+    clean.forEach((r, i) => { r._idx = i; });
+    console.info(`[PnPFinder] Loaded ${clean.length} games from CSV.`);
+    return clean;
+  }
+
+  // ---------- Start ----------
   function start() {
     initTheme();
     initEvents();
     buildSearchClearButton();
 
-    loadCSV()
-      .then(rows => {
-        // Keep a stable CSV order index for sorting
-        allGames = rows.filter(r => Object.keys(r).some(k => TRIM(r[k]))); // non-empty rows
-        allGames.forEach((r, i) => r._idx = i); // <— critical for Relevance & Newest
-
-        buildFiltersUI(allGames);
-
-        // Set initial view/sort UI
-        setViewMode(viewMode);
-        if (els.sort && "value" in els.sort) els.sort.value = sortBy;
-
-        render();
-      })
-      .catch(err => {
-        console.error("Failed to load games.csv:", err);
-        if (els.results) els.results.innerHTML = `<p class="error">Failed to load games. Please try again later.</p>`;
-      });
+    loadCSV().then(rows => {
+      allGames = rows;
+      initFiltersUI(allGames);
+      setViewMode(viewMode); // sets attribute + triggers render()
+      if (els.sort && "value" in els.sort) els.sort.value = sortBy;
+      render();
+      // Expose for quick debugging
+      window.PNP_DEBUG = { games: allGames, render, setSort, setViewMode };
+    }).catch(err => {
+      console.error("[PnPFinder] Failed to load games.csv:", err);
+      if (els.results) {
+        els.results.innerHTML = `<p class="error">Failed to load games. Please refresh or try again later.</p>`;
+      }
+    });
   }
 
-  // Kick off
   start();
 })();
