@@ -1,6 +1,7 @@
 /* PnPFinder — Submit page
-   - One-item-per-line vertical form
+   - Vertical form (submit.html scoped CSS)
    - Dropdowns populated from /data/games.csv
+   - Robust header aliasing so mismatched CSV headers still work
    - Required fields + maxlength counters for short/long descriptions
    - Image required only for "Game"
    - Posts JSON (with base64 image) to /api/submit (Cloudflare Pages Function)
@@ -59,12 +60,46 @@ const el = {
   craft: document.getElementById("craft"),
 };
 
-// Populate dropdowns from /data/games.csv
+// ---------- CSV population with robust header aliasing ----------
+
 const CSV_URL = "/data/games.csv";
 const MULTI_SEP = /[;,|]/;
 
-function addOptions(select, values, { placeholder = "— Select —", keepDash=false } = {}) {
-  // preserve the first placeholder and clear the rest
+// Canonical headers we care about and their aliases (all lowercase)
+const ALIASES = {
+  "game title": ["game title","title","name"],
+  "free or paid": ["free or paid","free/paid","pricing","price type","cost"],
+  "number of players": ["number of players","players","player count","players count","num players","# players"],
+  "age range": ["age range","age","ages","recommended age","min age"],
+  "theme": ["theme","genre","setting"],
+  "main mechanism": ["main mechanism","main mechanic","primary mechanism","primary mechanic","mechanism","mechanic"],
+  "secondary mechanism": ["secondary mechanism","secondary mechanic","mech 2","mechanism 2","mechanics (secondary)","other mechanism"],
+  "gameplay complexity": ["gameplay complexity","complexity","weight","bgg weight","rules complexity"],
+  "gameplay mode": ["gameplay mode","mode","player mode","play mode"],
+  "game category": ["game category","category","play style"],
+  "pnp crafting challenge level": ["pnp crafting challenge level","pnp crafting challenge","crafting challenge","pnp challenge","crafting difficulty","crafting level"]
+};
+
+const aliasIndex = (() => {
+  const idx = {};
+  for (const canon in ALIASES) {
+    for (const a of ALIASES[canon]) idx[a.toLowerCase()] = canon;
+  }
+  return idx;
+})();
+
+function canonicalizeRowKeys(row) {
+  const out = {};
+  for (const key in row) {
+    const lc = (key || "").trim().toLowerCase();
+    const canon = aliasIndex[lc] || key; // fall back to original if not an alias
+    out[canon] = row[key];
+  }
+  return out;
+}
+
+function addOptions(select, values, { placeholder = "— Select —" } = {}) {
+  // Clear and add placeholder
   select.innerHTML = "";
   const ph = document.createElement("option");
   ph.value = "";
@@ -72,10 +107,11 @@ function addOptions(select, values, { placeholder = "— Select —", keepDash=f
   ph.disabled = true;
   ph.selected = true;
   select.appendChild(ph);
+  // Add options
   for (const v of values) {
     const opt = document.createElement("option");
     opt.value = v;
-    opt.textContent = v || (keepDash ? "—" : "");
+    opt.textContent = v;
     select.appendChild(opt);
   }
 }
@@ -86,16 +122,16 @@ function normalizeMode(v) {
   if (s.includes("solo")) return "Solo";
   if (s.includes("coop") || s.includes("co-op") || s.includes("cooperative")) return "Cooperative";
   if (s.includes("compet")) return "Competitive";
-  return v.toString();
+  return v.toString().trim();
 }
 
 function uniqSorted(arr) {
   return [...new Set(arr.filter(Boolean))].sort((a,b)=>a.localeCompare(b, undefined, {numeric:true, sensitivity:"base"}));
 }
-function collectDistinct(rows, col, { split=false, mapFn=null } = {}) {
+function collectDistinct(rows, canonKey, { split=false, mapFn=null } = {}) {
   const out = [];
   for (const r of rows) {
-    let raw = r[col];
+    let raw = r[canonKey];
     if (raw == null) continue;
     if (split) {
       String(raw).split(MULTI_SEP).forEach(part => {
@@ -113,27 +149,41 @@ function collectDistinct(rows, col, { split=false, mapFn=null } = {}) {
 async function populateFromCSV() {
   try {
     const text = await fetch(CSV_URL).then(r => {
-      if (!r.ok) throw new Error(`Failed to load ${CSV_URL}`);
+      if (!r.ok) throw new Error(`Failed to load ${CSV_URL} (${r.status})`);
       return r.text();
     });
-    const parsed = Papa.parse(text, { header: true, skipEmptyLines: true, transformHeader: h => (h||"").replace(/^\uFEFF/,"").trim() });
-    const rows = parsed.data;
+    const parsed = Papa.parse(text, {
+      header: true,
+      skipEmptyLines: true,
+      transformHeader: h => (h || "").replace(/^\uFEFF/,"").trim()
+    });
 
-    // Build option lists
-    const freePaid = uniqSorted(rows.map(r => {
-      const v = String(r["Free or Paid"] || "").trim().toLowerCase();
+    // Canonicalize keys using aliases
+    const rows = parsed.data.map(canonicalizeRowKeys);
+
+    // Build distinct lists from canonical keys
+    let freePaid = uniqSorted(rows.map(r => {
+      const v = String(r["free or paid"] || r["Free or Paid"] || "").trim().toLowerCase();
       if (!v) return "";
       return v.includes("free") ? "Free" : "Paid";
     }));
-    const players   = collectDistinct(rows, "Number of Players");
-    const ageRange  = collectDistinct(rows, "Age Range");
-    const theme     = collectDistinct(rows, "Theme");
-    const mainMech  = collectDistinct(rows, "Main Mechanism");
-    const secondMech= collectDistinct(rows, "Secondary Mechanism", { split: true });
-    const complexity= collectDistinct(rows, "Gameplay Complexity");
-    const mode      = collectDistinct(rows, "Gameplay Mode", { mapFn: normalizeMode });
-    const category  = collectDistinct(rows, "Game Category");
-    const craft     = collectDistinct(rows, "PnP Crafting Challenge Level");
+    let players    = collectDistinct(rows, "number of players");
+    let ageRange   = collectDistinct(rows, "age range");
+    let theme      = collectDistinct(rows, "theme");
+    let mainMech   = collectDistinct(rows, "main mechanism");
+    let secondMech = collectDistinct(rows, "secondary mechanism", { split: true });
+    let complexity = collectDistinct(rows, "gameplay complexity");
+    let mode       = collectDistinct(rows, "gameplay mode", { mapFn: normalizeMode });
+    let category   = collectDistinct(rows, "game category");
+    let craft      = collectDistinct(rows, "pnp crafting challenge level");
+
+    // Fallbacks if a list came back empty
+    if (freePaid.length === 0) freePaid = ["Free","Paid"];
+    if (players.length === 0)  players  = ["1","1–2","1–4","2","2–4","3–6","4+"];
+    if (ageRange.length === 0) ageRange = ["8+","10+","12+","14+"];
+    if (complexity.length === 0) complexity = ["Light","Medium","Heavy"];
+    if (mode.length === 0) mode = ["Solo","Cooperative","Competitive"];
+    if (category.length === 0) category = ["Solo","Cooperative","Competitive"];
 
     // Apply to selects
     addOptions(el.freePaid, freePaid);
@@ -141,7 +191,8 @@ async function populateFromCSV() {
     addOptions(el.ageRange, ageRange);
     addOptions(el.theme, theme);
     addOptions(el.mainMech, mainMech);
-    // Secondary mechanism is optional; allow a blank
+
+    // Secondary mechanism is optional; allow a blank and values
     el.secondaryMech.innerHTML = "";
     {
       const blank = document.createElement("option");
@@ -155,7 +206,9 @@ async function populateFromCSV() {
         el.secondaryMech.appendChild(o);
       }
     }
+
     addOptions(el.complexity, complexity);
+
     // Mode and Category are optional; include a blank first
     el.mode.innerHTML = "";
     { const blank = document.createElement("option"); blank.value=""; blank.textContent="—"; blank.selected=true; el.mode.appendChild(blank); }
@@ -166,9 +219,12 @@ async function populateFromCSV() {
     for (const v of category) { const o=document.createElement("option"); o.value=v; o.textContent=v; el.category.appendChild(o); }
 
     addOptions(el.craft, craft);
+
+    console.info("[Submit] Dropdowns populated from CSV.");
   } catch (err) {
-    console.error("Populate dropdowns failed:", err);
-    // Fallback minimal options
+    console.error("[Submit] Populate dropdowns failed:", err);
+
+    // Graceful fallback so the form is still usable
     addOptions(el.freePaid, ["Free","Paid"]);
     addOptions(el.players, ["1","1–2","1–4","2","2–4","3–6","4+"]);
     addOptions(el.ageRange, ["8+","10+","12+","14+"]);
@@ -182,16 +238,18 @@ async function populateFromCSV() {
   }
 }
 
+// ---------- Visibility & required toggles ----------
+
 function showSection() {
   const v = collectionEl.value;
   gameFields.style.display = v === "games" ? "" : "none";
   tutorialFields.style.display = v === "tutorials" ? "" : "none";
   resourceFields.style.display = v === "resources" ? "" : "none";
 
-  // Required toggles: image required only for games
+  // Image required only for games
   imageInput.required = (v === "games");
 
-  // Also ensure required selects for game fields are enforced only when visible
+  // Required for game fields when visible
   const requiredWhenGame = [
     el.freePaid, el.players, el.ageRange, el.theme, el.mainMech, el.complexity, el.craft,
     document.getElementById("gameTitle"),
@@ -210,6 +268,8 @@ function showSection() {
 collectionEl.addEventListener("change", showSection);
 showSection();
 
+// ---------- Counters ----------
+
 function updateCounter(area, labelEl, max) {
   const len = (area.value || "").length;
   labelEl.textContent = `${len} / ${max}`;
@@ -218,6 +278,8 @@ shortDesc.addEventListener("input", () => updateCounter(shortDesc, shortCount, 1
 longDesc.addEventListener("input",  () => updateCounter(longDesc,  longCount,  400));
 updateCounter(shortDesc, shortCount, 125);
 updateCounter(longDesc,  longCount,  400);
+
+// ---------- Image to base64 ----------
 
 async function fileToBase64(file){
   if (!file) return null;
@@ -232,12 +294,12 @@ async function fileToBase64(file){
   return btoa(binary);
 }
 
-// Client-side validation helper (extra messages)
+// ---------- Extra validation ----------
+
 function validateGameForm() {
   const v = collectionEl.value;
   if (v !== "games") return true;
 
-  // Length guards
   if (shortDesc.value.length > 125) {
     shortDesc.focus();
     return "Short description must be 125 characters or fewer.";
@@ -262,6 +324,8 @@ function validateGameForm() {
   }
   return true;
 }
+
+// ---------- Submit ----------
 
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -336,5 +400,5 @@ form.addEventListener("submit", async (e) => {
   }
 });
 
-// Kick off dropdown population
+// Start dropdown population once scripts are ready
 populateFromCSV();
