@@ -432,3 +432,80 @@ button:focus-visible, .btn:focus-visible { outline: 3px solid var(--focus); outl
   clip: rect(1px,1px,1px,1px);
   white-space: nowrap; border: 0; padding: 0; margin: -1px;
 }
+/* === Responsive header controls fix (wrap + no horizontal scroll) === */
+
+/* Never allow horizontal scrolling caused by oversized controls */
+html, body { overflow-x: hidden; }
+
+/* Header layout: allow wrapping and sensible gaps */
+.site-header .controls {
+  display: flex;
+  flex-wrap: wrap;              /* <-- the key fix */
+  align-items: center;
+  justify-content: flex-end;
+  gap: .5rem .6rem;
+  max-width: 100%;
+}
+
+/* Make the search input stretchy; other controls stay compact */
+.site-header .controls :is(.search, .search-wrap) { 
+  flex: 1 1 280px; 
+  min-width: 0; 
+}
+
+.site-header .controls :is(input[type="search"], input[type="text"], .search-input) {
+  width: 100%;
+  min-width: 0;                 /* prevents overflow in narrow viewports */
+}
+
+/* Keep Sort dropdown compact but flexible */
+.site-header .controls :is(.sort, .sort-wrap, select) {
+  flex: 0 1 180px;
+  min-width: 140px;
+  max-width: 100%;
+}
+
+/* View toggle + theme toggle stay natural size */
+.site-header .controls :is(.view-toggle, .theme, #themeToggle, .btn-toggle) {
+  flex: 0 0 auto;
+}
+
+/* Tighten paddings on very small screens */
+@media (max-width: 720px) {
+  .site-header .wrap { padding-inline: 12px; }
+  .site-header .controls { gap: .5rem; }
+}
+
+/* When it’s extremely narrow, make controls stack cleanly */
+@media (max-width: 520px) {
+  .site-header .controls {
+    justify-content: stretch;   /* left-align when stacked */
+  }
+  .site-header .controls :is(.search, .search-wrap) {
+    flex: 1 1 100%;
+  }
+  .site-header .controls :is(.sort, .sort-wrap, select) {
+    flex: 1 1 50%;              /* put sort on its own line if needed */
+    min-width: 0;
+  }
+}
+
+/* Avoid oversized native dropdowns bursting the row */
+.site-header .controls select {
+  max-width: 100%;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* If your list/card toggle is a button group, let it wrap without breaking */
+.site-header .controls .view-toggle {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: .25rem;
+}
+
+/* Guard against any fixed/min widths from earlier styles */
+.site-header .controls > * {
+  max-width: 100%;
+  min-width: 0;
+}
