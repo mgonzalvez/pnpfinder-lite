@@ -1,1 +1,73 @@
+name: Sync games.csv from Google Sheets (direct commit)
 
+on:
+  schedule:
+    - cron: "*/30 * * * *"         # every 30 minutes (UTC)
+  workflow_dispatch:               # allow manual runs
+
+permissions:
+  contents: write                  # needed for committing to the repo
+
+env:
+  SHEETS_CSV_URL: "https://docs.google.com/spreadsheets/d/e/2PACX-1vTzMDg28m0vmjU9CKRH6a02NWp6Y__3Ysr7VnLG5zdmB6-mhFmomCPJa6Zs0FLkPHXaQx34oQmCoH7G/pub?gid=0&single=true&output=csv"
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y dos2unix
+
+      - name: Download published CSV
+        run: |
+          mkdir -p data
+          curl -sSL "$SHEETS_CSV_URL" -o data/games.new.csv
+          # normalize line endings + strip UTF-8 BOM if present
+          dos2unix data/games.new.csv || true
+          sed -i '1s/^\xEF\xBB\xBF//' data/games.new.csv
+
+      - name: Validate CSV header (fail if mismatch)
+        run: |
+          REQUIRED="Game Title,Designer,Publisher,Free or Paid,Price,Number of Players,Playtime,Age Range,Theme,Main Mechanism,Secondary Mechanism,Gameplay Complexity,Gameplay Mode,Game Category,PnP Crafting Challenge Level,One-Sentence Short Description,Long Description,Download Link,Secondary Download Link,Print Components,Other Components,Languages,Release Year,Game Image,Curated Lists,Report Dead Link"
+          ACTUAL="$(head -n 1 data/games.new.csv | tr -d '\r')"
+          if [ "$ACTUAL" != "$REQUIRED" ]; then
+            echo "Header mismatch!"
+            echo "Expected: $REQUIRED"
+            echo "Actual:   $ACTUAL"
+            exit 1
+          fi
+
+      - name: Basic sanity checks
+        run: |
+          ROWS=$(wc -l < data/games.new.csv || echo 0)
+          if [ "$ROWS" -lt 2 ]; then
+            echo "Downloaded CSV has no data rows; aborting."
+            exit 1
+          fi
+
+      - name: Detect changes
+        id: diff
+        run: |
+          if [ ! -f data/games.csv ]; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+          else
+            if diff -q data/games.csv data/games.new.csv >/dev/null 2>&1; then
+              echo "changed=false" >> $GITHUB_OUTPUT
+            else
+              echo "changed=true" >> $GITHUB_OUTPUT
+            fi
+          fi
+
+      - name: Commit to main if changed
+        if: steps.diff.outputs.changed == 'true'
+        run: |
+          mv data/games.new.csv data/games.csv
+          git add data/games.csv
+          git -c user.name="pnpfinder-bot" -c user.email="bot@users.noreply.github.com" \
+            commit -m "chore: sync games.csv from Google Sheets"
+          git push
