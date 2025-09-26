@@ -6,6 +6,20 @@
   <title>PnPFinder — Submit an Entry</title>
   <meta name="color-scheme" content="dark light" />
   <link rel="stylesheet" href="/css/style.css" />
+
+  <!-- Small page-local CSS to make the form one-item-per-line without touching global styles -->
+  <style>
+    /* Vertical form layout: one field per line */
+    .form-vertical .filters-grid { display: grid; grid-template-columns: 1fr; gap: .75rem; }
+    .form-vertical .select label { display: grid; gap: .35rem; }
+    .help { color: var(--muted); font-size: .85rem; }
+    .count { color: var(--muted); font-size: .85rem; justify-self: end; }
+    .counter-row { display: flex; justify-content: space-between; gap: .75rem; align-items: center; }
+    .error-text { color: #ff6b6b; font-size: .9rem; }
+  </style>
+
+  <!-- Papa Parse for reading /data/games.csv to populate dropdowns -->
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
   <script type="module" src="/js/submit.js" defer></script>
 </head>
 <body>
@@ -32,12 +46,13 @@
   <main class="wrap" role="main">
     <article class="detail-section" style="margin-top:1rem">
       <h3>Submit an entry</h3>
-      <p style="margin-top:.25rem">Your submission will be reviewed automatically and added to the site. Admins may refine formatting or details later.</p>
+      <p class="help" style="margin-top:.25rem">Game submissions require specific fields. Tutorials/Resources are simpler.</p>
 
-      <form id="submitForm" enctype="multipart/form-data">
+      <form id="submitForm" class="form-vertical" enctype="multipart/form-data" novalidate>
         <!-- honeypot (anti-spam) -->
         <input type="text" name="website" aria-hidden="true" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px;height:0;width:0;padding:0;border:0;" />
 
+        <!-- Type + Image -->
         <div class="filters-grid" style="margin-top:.75rem">
           <div class="select">
             <label for="collection">Type</label>
@@ -51,45 +66,156 @@
           <div class="select">
             <label for="image">Image (JPG/PNG/WebP, &lt; 5MB)</label>
             <input id="image" name="image" type="file" accept="image/*" />
+            <p class="help">Required for Games; optional for Tutorials/Resources.</p>
           </div>
         </div>
 
         <!-- GAME FIELDS -->
         <fieldset id="gameFields" class="detail-section" style="margin-top:1rem">
           <legend>Game</legend>
+
           <div class="filters-grid">
-            <div class="select"><label>Game Title<input name="Game Title" required /></label></div>
-            <div class="select"><label>Designer<input name="Designer" /></label></div>
-            <div class="select"><label>Publisher<input name="Publisher" /></label></div>
             <div class="select">
-              <label>Free or Paid
-                <select name="Free or Paid">
-                  <option value="">—</option>
-                  <option>Free</option>
-                  <option>Paid</option>
-                </select>
-              </label>
+              <label for="gameTitle">Game Title</label>
+              <input id="gameTitle" name="Game Title" required />
             </div>
-            <div class="select"><label>Price<input name="Price" placeholder="e.g., $0 / $5" /></label></div>
-            <div class="select"><label>Number of Players<input name="Number of Players" placeholder="1–4 or 1+" /></label></div>
-            <div class="select"><label>Playtime<input name="Playtime" placeholder="30–60" /></label></div>
-            <div class="select"><label>Age Range<input name="Age Range" placeholder="10+" /></label></div>
-            <div class="select"><label>Theme<input name="Theme" /></label></div>
-            <div class="select"><label>Main Mechanism<input name="Main Mechanism" /></label></div>
-            <div class="select"><label>Secondary Mechanism<input name="Secondary Mechanism" /></label></div>
-            <div class="select"><label>Gameplay Complexity<input name="Gameplay Complexity" placeholder="Light / Medium / Heavy" /></label></div>
-            <div class="select"><label>Gameplay Mode<input name="Gameplay Mode" placeholder="Solo / Cooperative / Competitive" /></label></div>
-            <div class="select"><label>Game Category<input name="Game Category" placeholder="Solo / Cooperative / Competitive" /></label></div>
-            <div class="select"><label>PnP Crafting Challenge Level<input name="PnP Crafting Challenge Level" placeholder="Low / Medium / High" /></label></div>
-            <div class="select"><label>Release Year<input name="Release Year" type="number" min="1900" max="2100" /></label></div>
-            <div class="select"><label>Languages<input name="Languages" placeholder="English; Spanish; …" /></label></div>
-            <div class="select" style="grid-column:1/-1"><label>One-Sentence Short Description<textarea name="One-Sentence Short Description" rows="2"></textarea></label></div>
-            <div class="select" style="grid-column:1/-1"><label>Long Description<textarea name="Long Description" rows="4"></textarea></label></div>
-            <div class="select"><label>Download Link<input name="Download Link" type="url" /></label></div>
-            <div class="select"><label>Secondary Download Link<input name="Secondary Download Link" type="url" /></label></div>
-            <div class="select"><label>Print Components<input name="Print Components" /></label></div>
-            <div class="select"><label>Other Components<input name="Other Components" /></label></div>
-            <div class="select"><label>Curated Lists<input name="Curated Lists" placeholder="Solo 2025; 18XX; …" /></label></div>
+
+            <div class="select">
+              <label for="designer">Designer</label>
+              <input id="designer" name="Designer" />
+            </div>
+
+            <div class="select">
+              <label for="publisher">Publisher</label>
+              <input id="publisher" name="Publisher" />
+            </div>
+
+            <div class="select">
+              <label for="freePaid">Free or Paid</label>
+              <select id="freePaid" name="Free or Paid" required>
+                <option value="" disabled selected>— Select —</option>
+              </select>
+            </div>
+
+            <div class="select">
+              <label for="price">Price</label>
+              <input id="price" name="Price" placeholder="e.g., $0 / $5" />
+            </div>
+
+            <div class="select">
+              <label for="players">Number of Players</label>
+              <select id="players" name="Number of Players" required>
+                <option value="" disabled selected>— Select —</option>
+              </select>
+            </div>
+
+            <div class="select">
+              <label for="playtime">Playtime</label>
+              <input id="playtime" name="Playtime" placeholder="30–60" required />
+            </div>
+
+            <div class="select">
+              <label for="ageRange">Age Range</label>
+              <select id="ageRange" name="Age Range" required>
+                <option value="" disabled selected>— Select —</option>
+              </select>
+            </div>
+
+            <div class="select">
+              <label for="theme">Theme</label>
+              <select id="theme" name="Theme" required>
+                <option value="" disabled selected>— Select —</option>
+              </select>
+            </div>
+
+            <div class="select">
+              <label for="mainMech">Main Mechanism</label>
+              <select id="mainMech" name="Main Mechanism" required>
+                <option value="" disabled selected>— Select —</option>
+              </select>
+            </div>
+
+            <div class="select">
+              <label for="secondaryMech">Secondary Mechanism</label>
+              <select id="secondaryMech" name="Secondary Mechanism">
+                <option value="" selected>—</option>
+              </select>
+            </div>
+
+            <div class="select">
+              <label for="complexity">Gameplay Complexity</label>
+              <select id="complexity" name="Gameplay Complexity" required>
+                <option value="" disabled selected>— Select —</option>
+              </select>
+            </div>
+
+            <div class="select">
+              <label for="mode">Gameplay Mode</label>
+              <select id="mode" name="Gameplay Mode">
+                <option value="" selected>—</option>
+              </select>
+              <p class="help">Examples: Solo, Cooperative, Competitive</p>
+            </div>
+
+            <div class="select">
+              <label for="category">Game Category</label>
+              <select id="category" name="Game Category">
+                <option value="" selected>—</option>
+              </select>
+            </div>
+
+            <div class="select">
+              <label for="craft">PnP Crafting Challenge Level</label>
+              <select id="craft" name="PnP Crafting Challenge Level" required>
+                <option value="" disabled selected>— Select —</option>
+              </select>
+            </div>
+
+            <div class="select">
+              <div class="counter-row">
+                <label for="shortDesc">One-Sentence Short Description</label>
+                <span id="shortDescCount" class="count">0 / 125</span>
+              </div>
+              <textarea id="shortDesc" name="One-Sentence Short Description" rows="2" maxlength="125" required></textarea>
+            </div>
+
+            <div class="select">
+              <div class="counter-row">
+                <label for="longDesc">Long Description</label>
+                <span id="longDescCount" class="count">0 / 400</span>
+              </div>
+              <textarea id="longDesc" name="Long Description" rows="4" maxlength="400" required></textarea>
+            </div>
+
+            <div class="select">
+              <label for="dl1">Main Download Link</label>
+              <input id="dl1" name="Download Link" type="url" inputmode="url" placeholder="https://…" required />
+            </div>
+
+            <div class="select">
+              <label for="dl2">Secondary Download Link</label>
+              <input id="dl2" name="Secondary Download Link" type="url" inputmode="url" placeholder="https://…" />
+            </div>
+
+            <div class="select">
+              <label for="printComp">Print Components</label>
+              <input id="printComp" name="Print Components" />
+            </div>
+
+            <div class="select">
+              <label for="otherComp">Other Components</label>
+              <input id="otherComp" name="Other Components" />
+            </div>
+
+            <div class="select">
+              <label for="releaseYear">Release Year</label>
+              <input id="releaseYear" name="Release Year" type="number" min="1900" max="2100" required />
+            </div>
+
+            <div class="select">
+              <label for="lists">Curated Lists</label>
+              <input id="lists" name="Curated Lists" placeholder="Solo 2025; 18XX; …" />
+            </div>
           </div>
         </fieldset>
 
@@ -97,11 +223,11 @@
         <fieldset id="tutorialFields" class="detail-section" style="margin-top:1rem;display:none">
           <legend>Tutorial</legend>
           <div class="filters-grid">
-            <div class="select"><label>Component<input name="Component" /></label></div>
-            <div class="select"><label>Title<input name="Title" /></label></div>
-            <div class="select"><label>Creator<input name="Creator" /></label></div>
-            <div class="select" style="grid-column:1/-1"><label>Description<textarea name="Description" rows="3"></textarea></label></div>
-            <div class="select"><label>Link<input name="Link" type="url" /></label></div>
+            <div class="select"><label for="tComponent">Component</label><input id="tComponent" name="Component" /></div>
+            <div class="select"><label for="tTitle">Title</label><input id="tTitle" name="Title" /></div>
+            <div class="select"><label for="tCreator">Creator</label><input id="tCreator" name="Creator" /></div>
+            <div class="select"><label for="tDesc">Description</label><textarea id="tDesc" name="Description" rows="3"></textarea></div>
+            <div class="select"><label for="tLink">Link</label><input id="tLink" name="Link" type="url" inputmode="url" placeholder="https://…" /></div>
           </div>
         </fieldset>
 
@@ -109,11 +235,11 @@
         <fieldset id="resourceFields" class="detail-section" style="margin-top:1rem;display:none">
           <legend>Resource</legend>
           <div class="filters-grid">
-            <div class="select"><label>Category<input name="Category" /></label></div>
-            <div class="select"><label>Title<input name="Title" /></label></div>
-            <div class="select"><label>Creator<input name="Creator" /></label></div>
-            <div class="select" style="grid-column:1/-1"><label>Description<textarea name="Description" rows="3"></textarea></label></div>
-            <div class="select"><label>Link<input name="Link" type="url" /></label></div>
+            <div class="select"><label for="rCategory">Category</label><input id="rCategory" name="Category" /></div>
+            <div class="select"><label for="rTitle">Title</label><input id="rTitle" name="Title" /></div>
+            <div class="select"><label for="rCreator">Creator</label><input id="rCreator" name="Creator" /></div>
+            <div class="select"><label for="rDesc">Description</label><textarea id="rDesc" name="Description" rows="3"></textarea></div>
+            <div class="select"><label for="rLink">Link</label><input id="rLink" name="Link" type="url" inputmode="url" placeholder="https://…" /></div>
           </div>
         </fieldset>
 
@@ -123,6 +249,7 @@
         </div>
 
         <p id="submitStatus" class="results-meta" role="status" style="margin-top:.75rem"></p>
+        <p id="submitError" class="error-text" role="alert" style="display:none"></p>
       </form>
     </article>
 

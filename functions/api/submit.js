@@ -1,14 +1,5 @@
-// functions/api/submit.js (Cloudflare Pages Function)
-// - Receives JSON from /submit.html
-// - Optional image upload committed to /uploads/<collection>/<id>.<ext>
-// - Appends a CSV row to /data/<collection>.csv via GitHub Content API
-// Environment (Cloudflare Pages -> Settings -> Environment variables):
-//   GITHUB_TOKEN (Secret; fine-grained PAT with Contents: Read & Write)
-//   GITHUB_OWNER  (e.g., "yourname")
-//   GITHUB_REPO   (e.g., "pnpfinder")
-//   GITHUB_BRANCH (e.g., "main")
-//   GIT_AUTHOR_NAME  (e.g., "PnPFinder Bot")
-//   GIT_AUTHOR_EMAIL (e.g., "bot@pnpfinder.com")
+// Cloudflare Pages Function: functions/api/submit.js
+// Updates: server-side validation for Game submissions (required fields + limits)
 
 export async function onRequestOptions() {
   return new Response(null, { status: 204, headers: corsHeaders() });
@@ -19,22 +10,55 @@ export async function onRequestPost({ request, env }) {
     const body = await request.json();
     const { collection, fields, image } = body || {};
 
-    // Honeypot safeguard (if client ever sends it)
     if (fields && fields.website) return json(400, { error: "Spam detected" });
 
     if (!["games", "tutorials", "resources"].includes(collection)) {
       return json(400, { error: "Invalid collection" });
     }
-    if (collection === "games" && !fields?.["Game Title"]) {
-      return json(400, { error: "Game Title is required" });
-    }
-    if (collection !== "games" && !fields?.["Title"]) {
-      return json(400, { error: "Title is required" });
+
+    // ----- VALIDATION -----
+    if (collection === "games") {
+      const req = [
+        "Game Title","Free or Paid","Number of Players","Playtime","Age Range","Theme",
+        "Main Mechanism","Gameplay Complexity","PnP Crafting Challenge Level",
+        "One-Sentence Short Description","Long Description","Download Link","Release Year"
+      ];
+      for (const key of req) {
+        if (!String(fields?.[key] || "").trim()) {
+          return json(400, { error: `Missing required field: ${key}` });
+        }
+      }
+      // Char limits
+      if ((fields["One-Sentence Short Description"]||"").length > 125) {
+        return json(400, { error: "Short description must be ≤ 125 characters." });
+      }
+      if ((fields["Long Description"]||"").length > 400) {
+        return json(400, { error: "Long description must be ≤ 400 characters." });
+      }
+      // Year
+      const y = String(fields["Release Year"]||"").trim();
+      if (!/^\d{4}$/.test(y) || +y < 1900 || +y > 2100) {
+        return json(400, { error: "Release Year must be a 4-digit year between 1900 and 2100." });
+      }
+      // URL
+      const dl = String(fields["Download Link"]||"").trim();
+      if (!/^https?:\/\//i.test(dl)) {
+        return json(400, { error: "Main Download Link must be a valid http(s) URL." });
+      }
+      // Image required
+      if (!image?.dataBase64) {
+        return json(400, { error: "Image is required for game submissions." });
+      }
+    } else {
+      // For tutorials/resources we at least require a Title
+      if (!String(fields?.["Title"] || "").trim()) {
+        return json(400, { error: "Title is required." });
+      }
     }
 
     const id = makeId(collection, fields);
 
-    // 1) Commit image (if provided) to /uploads/<collection>/<id>.<ext>
+    // 1) Save image if present
     let imagePath = "";
     if (image?.dataBase64) {
       const ext = guessExt(image.filename, image.contentType);
@@ -42,7 +66,7 @@ export async function onRequestPost({ request, env }) {
       await putFileToGit(env, imagePath, image.dataBase64, `Add image for ${collection}:${id}`);
     }
 
-    // 2) Append a row to the proper CSV
+    // 2) Build CSV row and append
     const csvFile = CSV_INFO[collection].file;
     const headers = await getCsvHeaders(env, csvFile);
     const rowObj = buildRowObject(collection, fields, imagePath);
@@ -57,7 +81,7 @@ export async function onRequestPost({ request, env }) {
   }
 }
 
-/* ====== Config & helpers ====== */
+/* ===== config & helpers (same as before) ===== */
 
 const CSV_INFO = {
   games: {
@@ -70,14 +94,8 @@ const CSV_INFO = {
       "Curated Lists","Report Dead Link"
     ],
   },
-  tutorials: {
-    file: "data/tutorials.csv",
-    headers: ["Component","Title","Creator","Description","Link","Image"],
-  },
-  resources: {
-    file: "data/resources.csv",
-    headers: ["Category","Title","Description","Link","Image","Creator"],
-  }
+  tutorials: { file: "data/tutorials.csv", headers: ["Component","Title","Creator","Description","Link","Image"] },
+  resources: { file: "data/resources.csv", headers: ["Category","Title","Description","Link","Image","Creator"] }
 };
 
 function corsHeaders() {
@@ -108,8 +126,6 @@ function guessExt(filename="", mime="") {
   return ".jpg";
 }
 
-/* ---- GitHub Content API helpers (Workers-safe) ---- */
-
 async function ghFetch(env, path, init = {}) {
   const url = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/${path}`;
   const headers = {
@@ -124,11 +140,9 @@ async function ghFetch(env, path, init = {}) {
   }
   return res.json();
 }
-
 async function getFileFromGit(env, path) {
   return ghFetch(env, `contents/${encodeURIComponent(path)}?ref=${encodeURIComponent(env.GITHUB_BRANCH || "main")}`);
 }
-
 async function putFileToGit(env, path, base64Content, message) {
   let sha;
   try { const cur = await getFileFromGit(env, path); sha = cur.sha; } catch {}
@@ -137,7 +151,7 @@ async function putFileToGit(env, path, base64Content, message) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       message,
-      content: base64Content,           // already base64 (for images) or we’ll base64 encode text
+      content: base64Content,
       branch: env.GITHUB_BRANCH || "main",
       sha,
       committer: { name: env.GIT_AUTHOR_NAME || "PnPFinder Bot", email: env.GIT_AUTHOR_EMAIL || "bot@pnpfinder.com" },
@@ -145,8 +159,6 @@ async function putFileToGit(env, path, base64Content, message) {
     })
   });
 }
-
-/* ---- CSV helpers ---- */
 
 function csvEscape(v) {
   if (v == null) return "";
@@ -161,7 +173,6 @@ function makeCsvRow(headers, rowObj) {
 function csvInfoByPath(path) {
   return Object.values(CSV_INFO).find(v => v.file === path);
 }
-
 async function getCsvHeaders(env, path) {
   try {
     const { content } = await getFileFromGit(env, path);
@@ -173,7 +184,6 @@ async function getCsvHeaders(env, path) {
     return csvInfoByPath(path).headers;
   }
 }
-
 async function appendCsv(env, path, newRow, message) {
   let sha, text;
   try {
@@ -216,8 +226,7 @@ function buildRowObject(collection, fields, imagePath) {
   return map;
 }
 
-/* ---- Base64 utils (Workers-safe UTF-8) ---- */
-
+/* UTF-8 base64 helpers (Workers-safe) */
 function encodeStringToBase64(str) {
   const bytes = new TextEncoder().encode(str);
   let binary = "";
@@ -227,7 +236,6 @@ function encodeStringToBase64(str) {
   }
   return btoa(binary);
 }
-
 function decodeBase64ToString(b64) {
   const binary = atob(b64);
   const len = binary.length;
