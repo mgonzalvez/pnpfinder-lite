@@ -1,0 +1,155 @@
+name: Sync tutorials.csv from Google Sheets (direct commit)
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"    # every 30 minutes (UTC)
+  workflow_dispatch:          # allow manual runs from Actions tab
+
+permissions:
+  contents: write
+
+env:
+  SHEETS_CSV_URL: "https://docs.google.com/spreadsheets/d/e/2PACX-1vTzMDg28m0vmjU9CKRH6a02NWp6Y__3Ysr7VnLG5zdmB6-mhFmomCPJa6Zs0FLkPHXaQx34oQmCoH7G/pub?gid=503068352&single=true&output=csv"
+  # Canonical header order your site uses for tutorials
+  REQUIRED_HEADER: "Component,Title,Creator,Description,Link,Image"
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Install tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y dos2unix python3
+
+      - name: Download published CSV
+        run: |
+          mkdir -p data
+          curl -sSL "$SHEETS_CSV_URL" -o data/tutorials.source.csv
+          dos2unix data/tutorials.source.csv || true
+          # strip UTF-8 BOM if present
+          sed -i '1s/^\xEF\xBB\xBF//' data/tutorials.source.csv
+          echo "SOURCE header:"
+          head -n 1 data/tutorials.source.csv
+
+      - name: Normalize headers and column order
+        run: |
+          python3 - << 'PY'
+          import csv, re
+
+          SRC = "data/tutorials.source.csv"
+          OUT = "data/tutorials.normalized.csv"
+
+          # Canonical order (what your site expects)
+          CANON = ["Component","Title","Creator","Description","Link","Image"]
+
+          # Normalize key (case/space/punct insensitive)
+          def norm(s): return re.sub(r"[^a-z0-9]+"," ", (s or "").strip().lower()).strip()
+
+          # Common aliases → canonical
+          ALIASES = {
+            norm("component"): "Component",
+            norm("title"): "Title",
+            norm("name"): "Title",                    # sometimes folks label it "Name"
+            norm("creator"): "Creator",
+            norm("author"): "Creator",
+            norm("channel"): "Creator",
+            norm("description"): "Description",
+            norm("desc"): "Description",
+            norm("link"): "Link",
+            norm("url"): "Link",
+            norm("website"): "Link",
+            norm("image"): "Image",
+            norm("img"): "Image",
+            norm("thumbnail"): "Image",
+            norm("thumb"): "Image",
+            # extras we ignore if present
+            norm("date added"): None,
+            norm("notes"): None,
+          }
+
+          with open(SRC, newline="", encoding="utf-8") as f:
+            r = csv.DictReader(f)
+            src_fields = r.fieldnames or []
+
+            # Build incoming → canonical map
+            keymap = {}
+            canon_norm = {norm(c): c for c in CANON}
+            for k in src_fields:
+              nk = norm(k)
+              if nk in ALIASES and ALIASES[nk] is not None:
+                keymap[k] = ALIASES[nk]
+              elif nk in canon_norm:
+                keymap[k] = canon_norm[nk]   # already canonical by meaning
+              else:
+                keymap[k] = None             # unknown column → ignore
+
+            rows = list(r)
+
+          # Write normalized CSV
+          with open(OUT, "w", newline="", encoding="utf-8") as g:
+            w = csv.DictWriter(g, fieldnames=CANON)
+            w.writeheader()
+            for row in rows:
+              outrow = {col: "" for col in CANON}
+              for k, v in row.items():
+                ck = keymap.get(k)
+                if ck in outrow:
+                  outrow[ck] = v
+              w.writerow(outrow)
+          PY
+          echo "NORMALIZED header:"
+          head -n 1 data/tutorials.normalized.csv
+          echo "Rows:"
+          wc -l data/tutorials.normalized.csv
+
+      - name: Validate normalized CSV
+        run: |
+          ACT="$(head -n 1 data/tutorials.normalized.csv | tr -d '\r')"
+          echo "Normalized header: $ACT"
+          if [ "$ACT" != "$REQUIRED_HEADER" ]; then
+            echo "Normalized header mismatch."
+            exit 1
+          fi
+          ROWS=$(wc -l < data/tutorials.normalized.csv || echo 0)
+          if [ "$ROWS" -lt 2 ]; then
+            echo "No data rows after normalization."
+            exit 1
+          fi
+
+      - name: Detect changes
+        id: diff
+        run: |
+          if [ ! -f data/tutorials.csv ]; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+          else
+            if diff -q data/tutorials.csv data/tutorials.normalized.csv >/dev/null 2>&1; then
+              echo "changed=false" >> $GITHUB_OUTPUT
+            else
+              echo "changed=true" >> $GITHUB_OUTPUT
+            fi
+          fi
+
+      - name: Commit & push (direct)
+        if: steps.diff.outputs.changed == 'true'
+        run: |
+          mv data/tutorials.normalized.csv data/tutorials.csv
+          git config --global user.name  "pnpfinder-bot"
+          git config --global user.email "bot@users.noreply.github.com"
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          git add data/tutorials.csv
+          git fetch origin main
+          git checkout main
+          git pull --rebase origin main || true
+          if git diff --cached --quiet; then
+            echo "Nothing to commit."
+            exit 0
+          fi
+          git commit -m "chore: sync tutorials.csv from Google Sheets (normalized)"
+          git push origin main
