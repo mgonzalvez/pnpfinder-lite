@@ -11,7 +11,7 @@
       "mode": "query",
       "where": [
         [
-          "curated list includes",
+          "Curated Lists",
           "includes",
           "in-hand games"
         ]
