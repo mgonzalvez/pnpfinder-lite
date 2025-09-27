@@ -1,30 +1,49 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>PnP Finder – Spotlight</title>
-  <link rel="stylesheet" href="/css/style.css?v=v2025-09-27" />
-  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PnPFinder — Spotlight</title>
+  <meta name="color-scheme" content="dark light" />
+  <link rel="stylesheet" href="/css/style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js" defer></script>
+  <script type="module" src="/js/spotlight.js" defer></script>
 </head>
 <body>
-  <header class="wrap">
-    <nav class="topnav">
-      <a href="/" class="nav-link active" aria-current="page">Games</a>
+  <header class="site-header wrap" role="banner">
+    <div class="brand">
+      <h1><a class="brand-link" href="/">PnPFinder</a></h1>
+      <p class="tagline">Rotating features highlighting standout PnP categories.</p>
+
+      <!-- Top-level navigation (match other pages) -->
+      <nav class="top-nav" aria-label="Primary">
+        <a href="/" class="nav-link">Games</a>
         <a href="/tutorials.html" class="nav-link">Tutorials</a>
         <a href="/resources.html" class="nav-link">Resources</a>
-        <a class="active" href="/spotlight.html" class="nav-link">Spotlight</a>
-    </nav>
-    <h1>Spotlight</h1>
-    <p class="tagline">A rotating feature that highlights a PnP category with standout picks.</p>
+        <a href="/spotlight.html" class="nav-link active" aria-current="page">Spotlight</a>
+        <a href="https://docs.google.com/forms/d/e/1FAIpQLSckXPkwbUa7ctk_u0Bo71YExCaENONEoa8arj1YTFPSH7VDQg/viewform?usp=sf_link" class="nav-link" target="_blank" rel="noopener">Submit</a>
+      </nav>
+    </div>
+
+    <div class="controls">
+      <div class="theme">
+        <button id="themeToggle" class="toggle" aria-pressed="false" title="Switch to light mode">Dark</button>
+      </div>
+    </div>
   </header>
 
-  <main class="wrap">
+  <main id="main" class="wrap" role="main" aria-busy="true">
     <section id="hero" class="spot-hero" aria-live="polite"></section>
-    <section id="list" class="spot-list" aria-label="Spotlight games"></section>
-    <aside id="pager" class="spot-switch"></aside>
+
+    <div id="resultsMeta" class="results-meta" aria-live="polite"></div>
+
+    <section id="cards" class="cards" role="list"></section>
+
+    <nav id="pager" class="pager" aria-label="Category switch"></nav>
   </main>
 
-  <script src="/js/spotlight.js?v=v2025-09-27"></script>
+  <footer class="site-footer wrap">
+    <small>© <span id="year"></span> PnPFinder</small>
+  </footer>
 </body>
 </html>
