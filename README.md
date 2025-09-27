@@ -52,3 +52,45 @@
 # from repo root
 python3 -m http.server 8080
 # then open http://localhost:8080
+````
+
+> Tip: Do a hard refresh if you change CSVs to bypass browser cache.
+
+---
+
+## Manually Trigger a Sync
+
+1. Go to **GitHub → Actions**.
+2. Choose the workflow (Games/Tutorials/Resources).
+3. Click **Run workflow**.
+4. Verify a commit landed (e.g., *“chore: sync … CSV …”*).
+5. Your host (Cloudflare Pages/GitHub Pages) redeploys automatically.
+
+---
+
+## Project Structure (high-level)
+
+```
+/css/style.css
+/js/script.js           # Games page logic
+/js/tutorials.js        # Tutorials page logic
+/js/resources.js        # Resources page logic
+/data/games.csv         # auto-generated
+/data/tutorials.csv     # auto-generated
+/data/resources.csv     # auto-generated
+index.html
+tutorials.html
+resources.html
+.github/workflows/
+  ├─ sync-games.yml
+  ├─ submit-tutorial.yml
+  └─ submit-resource.yml
+```
+
+---
+
+## Credits & License
+
+* Built by the PnP community.
+* © PnPFinder. All rights reserved.
+* Data links may point to third-party sites; trademarks belong to their owners.
