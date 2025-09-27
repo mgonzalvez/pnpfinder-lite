@@ -1,4 +1,4 @@
-CATEGORY,TITLE,DESCRIPTION,LINK,IMAGE,CREATOR
+Category,Title,Description,Link,Image,Creator
 Communities,The Print and Play Hideaway,"A Facebook group for, by, and about the PnP community.",https://www.facebook.com/groups/pnphideaway/,https://storage.googleapis.com/glide-prod.appspot.com/uploads-v2/Ji677LVwrgF6rmMlGpTL/pub/m2p1jdEML3KPCDK8FUm5.jpg,Martin Gonzalvez
 Websites,PnPArcade,Instant high quality print and play games.,https://www.pnparcade.com/,https://storage.googleapis.com/glide-prod.appspot.com/uploads-v2/Ji677LVwrgF6rmMlGpTL/pub/ManMd5jWCed3jgdLZdkn.avif,Jason Tagmire
 Utilities,PnP Buddy,A free online tool to format your print and play files and adjust front-back page alignment.,http://www.pnpbuddy.com/,https://storage.googleapis.com/glide-prod.appspot.com/uploads-v2/Ji677LVwrgF6rmMlGpTL/pub/1jk3tH2qQpJWoNnbrwYt.jpg,Alexander Norback
@@ -35,3 +35,4 @@ Utilities,Bookbinder JS,A Javascript-based app for formatting PDFs for bookbindi
 Websites,Drivethrurpg,An extensive list of RPG's available in PDF and Print on Demand formats.,https://www.drivethrurpg.com/en/,https://storage.googleapis.com/glide-prod.appspot.com/uploads-v2/Ji677LVwrgF6rmMlGpTL/pub/pd3FTKdF7tcxzIxIYYmH.png,
 Geeklists,"itch.io Physical Games (tagged ""Print and Play"")",Print and play games available on itch.io.,https://itch.io/physical-games/tag-print-and-play,https://storage.googleapis.com/glide-prod.appspot.com/uploads-v2/Ji677LVwrgF6rmMlGpTL/pub/14n4I1lKK9wmIvoR39D6.png,
 Utilities,nanDECK,"A free tool for designing games, enabling users to create custom cards and components via scripting and spreadsheet integration.",https://www.nandeck.com,https://storage.googleapis.com/glide-prod.appspot.com/uploads-v2/Ji677LVwrgF6rmMlGpTL/pub/Ydmck5kKcWoCarTGlDE6.png,Nand
+Geeklists,Sites To Download Games (PnP),"This is a list of websites where you can find PnP games. There are free, as well as purchasable games on these sites.",https://boardgamegeek.com/geeklist/248640/sites-to-download-games-pnp,https://github.com/mgonzalvez/pnpfinder-lite/blob/main/img/sites_to_download_games_pnp.png?raw=true,Alex B. (@admiral142 on BGG)
