@@ -1,4 +1,4 @@
-name: Sync resources.csv from Google Sheets (direct commit, hardened)
+name: Sync resources.csv from Google Sheets (direct commit, hardened v2)
 
 on:
   schedule:
@@ -10,7 +10,6 @@ permissions:
 
 env:
   SHEETS_CSV_URL: "https://docs.google.com/spreadsheets/d/e/2PACX-1vTzMDg28m0vmjU9CKRH6a02NWp6Y__3Ysr7VnLG5zdmB6-mhFmomCPJa6Zs0FLkPHXaQx34oQmCoH7G/pub?gid=1706128299&single=true&output=csv"
-  # Canonical header order your site expects
   REQUIRED_HEADER: "Category,Title,Description,Link,Image,Creator"
 
 jobs:
@@ -32,6 +31,7 @@ jobs:
         env:
           BUSTER: ${{ github.run_id }}
         run: |
+          set -euo pipefail
           mkdir -p data
           URL="${SHEETS_CSV_URL}&nocache=${BUSTER}"
           echo "Fetching: $URL"
@@ -44,7 +44,7 @@ jobs:
           echo "SOURCE rows (count):"
           wc -l data/resources.source.csv
           echo "SOURCE last 5 rows:"
-          tail -n 5 data/resources.source.csv
+          tail -n 5 data/resources.source.csv || true
 
       - name: Normalize headers and column order
         run: |
@@ -54,14 +54,11 @@ jobs:
           SRC = "data/resources.source.csv"
           OUT = "data/resources.normalized.csv"
 
-          # Canonical order used by the site
           CANON = ["Category","Title","Description","Link","Image","Creator"]
 
           def norm(s):
               return re.sub(r"[^a-z0-9]+"," ", (s or "").strip().lower()).strip()
 
-          # Your sheet headers are: CATEGORY, TITLE, CREATOR, DESCRIPTION, LINK, IMAGE
-          # Also support common variants
           ALIASES = {
             norm("CATEGORY"): "Category",
             norm("TITLE"): "Title",
@@ -78,7 +75,7 @@ jobs:
             norm("CREATOR"): "Creator",
             norm("AUTHOR"): "Creator",
             norm("CHANNEL"): "Creator",
-            # Ignore extras if present
+            # ignored extras if present
             norm("DATE ADDED"): None,
             norm("NOTES"): None,
           }
@@ -87,21 +84,19 @@ jobs:
             r = csv.DictReader(f)
             src_fields = r.fieldnames or []
 
-            # Build incoming → canonical map
-            keymap = {}
             canon_norm = {norm(c): c for c in CANON}
+            keymap = {}
             for k in src_fields:
               nk = norm(k)
               if nk in ALIASES and ALIASES[nk] is not None:
                 keymap[k] = ALIASES[nk]
               elif nk in canon_norm:
-                keymap[k] = canon_norm[nk]   # already matches a canonical column (diff casing/order)
+                keymap[k] = canon_norm[nk]
               else:
-                keymap[k] = None             # unknown column → ignore
+                keymap[k] = None  # unknown column → ignore
 
             rows = list(r)
 
-          # Write normalized CSV with canonical columns (reordered)
           with open(OUT, "w", newline="", encoding="utf-8") as g:
             w = csv.DictWriter(g, fieldnames=CANON)
             w.writeheader()
@@ -119,10 +114,11 @@ jobs:
           echo "NORMALIZED rows (count):"
           wc -l data/resources.normalized.csv
           echo "NORMALIZED last 5 rows:"
-          tail -n 5 data/resources.normalized.csv
+          tail -n 5 data/resources.normalized.csv || true
 
       - name: Validate normalized CSV
         run: |
+          set -euo pipefail
           ACT="$(head -n 1 data/resources.normalized.csv | tr -d '\r')"
           echo "Normalized header: $ACT"
           if [ "$ACT" != "$REQUIRED_HEADER" ]; then
@@ -140,20 +136,25 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          if [ ! -f data/resources.normalized.csv ]; then
+            echo "Normalized file missing; aborting." >&2
+            exit 1
+          fi
           if [ ! -f data/resources.csv ]; then
             echo "Repo file missing; will commit." >&2
             echo "changed=true" >> "$GITHUB_OUTPUT"
-          else:
-            SRC_SHA="$(shasum data/resources.normalized.csv | awk '{print $1}')"
-            REPO_SHA="$(shasum data/resources.csv | awk '{print $1}')"
+          else
+            SRC_SHA="$(sha256sum data/resources.normalized.csv | awk '{print $1}')"
+            REPO_SHA="$(sha256sum data/resources.csv | awk '{print $1}')"
             echo "SRC_SHA=$SRC_SHA"
             echo "REPO_SHA=$REPO_SHA"
-            echo "Repo rows / New rows:"
+            echo "Repo rows:"
             wc -l data/resources.csv || true
-            wc -l data/resources.normalized.csv
+            echo "New rows:"
+            wc -l data/resources.normalized.csv || true
             if [ "$SRC_SHA" != "$REPO_SHA" ]; then
               echo "changed=true" >> "$GITHUB_OUTPUT"
-            else:
+            else
               echo "No changes detected."
               echo "changed=false" >> "$GITHUB_OUTPUT"
             fi
