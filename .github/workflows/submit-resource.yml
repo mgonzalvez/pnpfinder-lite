@@ -1,16 +1,16 @@
-name: Sync resources.csv from Google Sheets (direct commit)
+name: Sync resources.csv from Google Sheets (direct commit, hardened)
 
 on:
   schedule:
-    - cron: "*/30 * * * *"    # every 30 minutes (UTC)
-  workflow_dispatch:          # allow manual runs
+    - cron: "*/30 * * * *"        # every 30 minutes (UTC)
+  workflow_dispatch:              # allow manual runs
 
 permissions:
   contents: write
 
 env:
   SHEETS_CSV_URL: "https://docs.google.com/spreadsheets/d/e/2PACX-1vTzMDg28m0vmjU9CKRH6a02NWp6Y__3Ysr7VnLG5zdmB6-mhFmomCPJa6Zs0FLkPHXaQx34oQmCoH7G/pub?gid=1706128299&single=true&output=csv"
-  # Canonical header order your site expects for resources
+  # Canonical header order your site expects
   REQUIRED_HEADER: "Category,Title,Description,Link,Image,Creator"
 
 jobs:
@@ -28,15 +28,23 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y dos2unix python3
 
-      - name: Download published CSV
+      - name: Download published CSV (with cache-buster)
+        env:
+          BUSTER: ${{ github.run_id }}
         run: |
           mkdir -p data
-          curl -sSL "$SHEETS_CSV_URL" -o data/resources.source.csv
+          URL="${SHEETS_CSV_URL}&nocache=${BUSTER}"
+          echo "Fetching: $URL"
+          curl -sSL -H 'Cache-Control: no-cache' -H 'Pragma: no-cache' "$URL" -o data/resources.source.csv
           dos2unix data/resources.source.csv || true
           # strip UTF-8 BOM if present
           sed -i '1s/^\xEF\xBB\xBF//' data/resources.source.csv
           echo "SOURCE header:"
           head -n 1 data/resources.source.csv
+          echo "SOURCE rows (count):"
+          wc -l data/resources.source.csv
+          echo "SOURCE last 5 rows:"
+          tail -n 5 data/resources.source.csv
 
       - name: Normalize headers and column order
         run: |
@@ -46,18 +54,19 @@ jobs:
           SRC = "data/resources.source.csv"
           OUT = "data/resources.normalized.csv"
 
-          # Canonical order (what your site expects)
+          # Canonical order used by the site
           CANON = ["Category","Title","Description","Link","Image","Creator"]
 
-          # Normalize key (case/space/punct insensitive)
-          def norm(s): return re.sub(r"[^a-z0-9]+"," ", (s or "").strip().lower()).strip()
+          def norm(s):
+              return re.sub(r"[^a-z0-9]+"," ", (s or "").strip().lower()).strip()
 
-          # Your sheet headers are all caps: CATEGORY, TITLE, CREATOR, DESCRIPTION, LINK, IMAGE
-          # Also support common aliases (URL/Website/Thumb/etc.)
+          # Your sheet headers are: CATEGORY, TITLE, CREATOR, DESCRIPTION, LINK, IMAGE
+          # Also support common variants
           ALIASES = {
             norm("CATEGORY"): "Category",
             norm("TITLE"): "Title",
             norm("DESCRIPTION"): "Description",
+            norm("DESC"): "Description",
             norm("LINK"): "Link",
             norm("URL"): "Link",
             norm("WEBSITE"): "Link",
@@ -69,7 +78,7 @@ jobs:
             norm("CREATOR"): "Creator",
             norm("AUTHOR"): "Creator",
             norm("CHANNEL"): "Creator",
-            # ignore extras if present
+            # Ignore extras if present
             norm("DATE ADDED"): None,
             norm("NOTES"): None,
           }
@@ -78,7 +87,7 @@ jobs:
             r = csv.DictReader(f)
             src_fields = r.fieldnames or []
 
-            # Map incoming → canonical
+            # Build incoming → canonical map
             keymap = {}
             canon_norm = {norm(c): c for c in CANON}
             for k in src_fields:
@@ -86,13 +95,13 @@ jobs:
               if nk in ALIASES and ALIASES[nk] is not None:
                 keymap[k] = ALIASES[nk]
               elif nk in canon_norm:
-                keymap[k] = canon_norm[nk]   # already canonical in meaning
+                keymap[k] = canon_norm[nk]   # already matches a canonical column (diff casing/order)
               else:
                 keymap[k] = None             # unknown column → ignore
 
             rows = list(r)
 
-          # Write normalized CSV in canonical order
+          # Write normalized CSV with canonical columns (reordered)
           with open(OUT, "w", newline="", encoding="utf-8") as g:
             w = csv.DictWriter(g, fieldnames=CANON)
             w.writeheader()
@@ -104,10 +113,13 @@ jobs:
                   outrow[ck] = v
               w.writerow(outrow)
           PY
+
           echo "NORMALIZED header:"
           head -n 1 data/resources.normalized.csv
-          echo "Rows:"
+          echo "NORMALIZED rows (count):"
           wc -l data/resources.normalized.csv
+          echo "NORMALIZED last 5 rows:"
+          tail -n 5 data/resources.normalized.csv
 
       - name: Validate normalized CSV
         run: |
@@ -125,30 +137,43 @@ jobs:
 
       - name: Detect changes
         id: diff
+        shell: bash
         run: |
+          set -euo pipefail
           if [ ! -f data/resources.csv ]; then
-            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "Repo file missing; will commit." >&2
+            echo "changed=true" >> "$GITHUB_OUTPUT"
           else:
-            if diff -q data/resources.csv data/resources.normalized.csv >/dev/null 2>&1; then
-              echo "changed=false" >> $GITHUB_OUTPUT
-            else
-              echo "changed=true" >> $GITHUB_OUTPUT
+            SRC_SHA="$(shasum data/resources.normalized.csv | awk '{print $1}')"
+            REPO_SHA="$(shasum data/resources.csv | awk '{print $1}')"
+            echo "SRC_SHA=$SRC_SHA"
+            echo "REPO_SHA=$REPO_SHA"
+            echo "Repo rows / New rows:"
+            wc -l data/resources.csv || true
+            wc -l data/resources.normalized.csv
+            if [ "$SRC_SHA" != "$REPO_SHA" ]; then
+              echo "changed=true" >> "$GITHUB_OUTPUT"
+            else:
+              echo "No changes detected."
+              echo "changed=false" >> "$GITHUB_OUTPUT"
             fi
           fi
 
       - name: Commit & push (direct)
         if: steps.diff.outputs.changed == 'true'
+        shell: bash
         run: |
+          set -euo pipefail
           mv data/resources.normalized.csv data/resources.csv
           git config --global user.name  "pnpfinder-bot"
           git config --global user.email "bot@users.noreply.github.com"
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
           git add data/resources.csv
-          git fetch origin main
+          git fetch origin main || true
           git checkout main
           git pull --rebase origin main || true
           if git diff --cached --quiet; then
-            echo "Nothing to commit."
+            echo "Nothing to commit after rebase."
             exit 0
           fi
           git commit -m "chore: sync resources.csv from Google Sheets (normalized)"
