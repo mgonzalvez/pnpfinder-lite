@@ -1,0 +1,46 @@
+[
+  {
+    "key": "in-hand",
+    "title": "In-Hand Games",
+    "cycle": true,
+    "intro": "In-hand games are, as the name implies, a deck of cards that are played entirely while being held and carried in your hand. Most of them feature a clever use of rotating and flipping cards, and position/movement of cards in the deck, as their main game mechanisms. Although in-hand PnP games are small and compact, the best of them provide a fun and engaging game experience that punches far above their diminutive size. My first experience with in-hand PnP games was Jon Mietling's excellent [Palm Island](https://pnpfinder-lite.pages.dev/game?id=255), a town-building, resource collection Euro game experience played entirely in the palm of your hand. I still consider that game (released in 2018) to be a classic, PnP or otherwise. Another in-hand PnP game I have enjoyed is Frank Druet's [Pocket Planet](https://pnpfinder-lite.pages.dev/game?id=66), a science-fiction-themed, pocket-sized Euro game of planetary exploration, resource collection, and conversion. I have also played and enjoyed Joe Klipfel's [Hand of Destiny](https://pnpfinder-lite.pages.dev/game?id=343), which started life as a wonderful free PnP game called [Griphold Tower](https://boardgamegeek.com/filepage/248665/griphold-tower-pnp). I hope you enjoy exploring this wonderful sub-category of PnP games that offer you vast worlds of adventure and imagination...in the palm of your hand. -- *Martin Gonzalvez*",
+    "hero": "/img/spotlight/in-hand.png",
+    "alt": "A compact card game fanned in-hand, emphasizing rotate/flip gameplay.",
+    "credit": "",
+    "select": {
+      "mode": "query",
+      "where": [
+        [
+          "curated list includes",
+          "includes",
+          "in-hand games"
+        ]
+      ],
+      "limit": 16,
+      "sort": "downloads_desc"
+    },
+    "curated": []
+  },
+  {
+    "key": "deck-building",
+    "title": "Deck Building Games",
+    "cycle": true,
+    "intro": "Since I first entered the board game hobby, I have always loved deck building games. I just can't get enough of that feeling of starting with a basic, low-power deck of cards, then that irresistible gameplay loop of playing cards, to purchase better cards, to build up your deck, to play more powerful cards, to purchase even more powerful cards, and so on. I have over 30 deck building games in my collection, and I don't think I'm going to stop \"building up\" my collection of deck building games anytime soon. It's no surprise, then, that I also have a longtime fascination with PnP deck building games. In fact, the very first PnP game I ever crafted, a super rough build printed on the backs of discarded card stock, was Manuel Correia's clever and thematic [Agent Decker](https://pnpfinder-lite.pages.dev/game?id=0), a taught, tightly-designed 54-card game of stealth casting you in the role of a spy whose goal is to sneak deep into a high-tech fortress to complete six increasingly challenging deck-building missions. There are a number of excellent free PnP rethemes of popular deck building games, including Wilhelm Su's [Calvin and Hobbes retheme](https://pnpfinder-lite.pages.dev/game?id=186) of [After The Virus](https://boardgamegeek.com/boardgame/232361/after-the-virus), and Chris De Villiers' epic [Teenage Mutant Ninja Turtles retheme](https://pnpfinder-lite.pages.dev/game?id=187) of [Friday](https://boardgamegeek.com/boardgame/43570/friday). If you want to dip your toe into the world of PnP deck building games, you'll find quite a few of them here on PnPFinder to pique your interest. -- *Martin Gonzalvez*",
+    "hero": "/img/spotlight/deckbuilding.png",
+    "alt": "Cards, coins, and tableau from a deck-building game on a table.",
+    "credit": "",
+    "select": {
+      "mode": "query",
+      "where": [
+        [
+          "Main Mechanism",
+          "equals",
+          "Deck Building"
+        ]
+      ],
+      "limit": 16,
+      "sort": "downloads_desc"
+    },
+    "curated": []
+  }
+]
