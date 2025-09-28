@@ -1,90 +1,82 @@
-// PnPFinder — Spotlight page (aligns with site structure/classes)
-
 const CSV_URL = "/data/games.csv";
 const SPOTLIGHT_URL = "/data/spotlight.json";
-const THEME_KEY = "theme";
-
-const qs = new URLSearchParams(location.search);
-const $ = (sel) => document.querySelector(sel);
+let currentView = localStorage.getItem("viewMode") || "cards";
+const $ = (s, p=document) => p.querySelector(s);
+const cardsEl = $("#cards");
+const viewCardsBtn = $("#viewCards");
+const viewListBtn  = $("#viewList");
 
 function normalizeStr(v){ return (v==null? "": String(v)).trim(); }
-function slugify(s){
-  return normalizeStr(s).toLowerCase()
-    .normalize('NFKD').replace(/[\u0300-\u036f]/g,'')
-    .replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
-}
-function gameKey(row){
-  const title = row["Game Title"] || row["Title"] || row.title || "";
-  const designer = row["Designer"] || row.designer || "";
-  return `game_${slugify(title)}__${slugify(designer)}`;
-}
-function mdToHtml(md){
-  if (!md) return "";
-  let html = md.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
-  html = html
-    .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')
-    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*([^*]+)\*/g, '<em>$1</em>')
-    .replace(/\n/g,'<br />');
-  return html;
-}
+function slugify(s){ return normalizeStr(s).toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,''); }
+function gameKey(row){ const title=row["Game Title"]||row["Title"]||row.title||""; const designer=row["Designer"]||row.designer||""; return `game_${slugify(title)}__${slugify(designer)}`; }
 function badge(text){ const b=document.createElement("span"); b.className="badge"; b.textContent=text; return b; }
 function linkBtn(href,label){ const a=document.createElement("a"); a.href=href; a.target="_blank"; a.rel="noopener"; a.textContent=label; return a; }
-
 function getImageUrl(row){ return normalizeStr(row["Game Image"]) || ""; }
+function mdToHtml(md){ if(!md) return ""; let h=md.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); h=h.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,'<a href="$2" target="_blank" rel="noopener">$1</a>').replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>').replace(/\*([^*]+)\*/g,'<em>$1</em>').replace(/\n/g,'<br />'); return h; }
 
-function setTheme(next, buttonEl){
-  document.documentElement.setAttribute("data-theme", next);
-  localStorage.setItem("theme", next);
-  if (buttonEl){
-    const isLight = next === "light";
-    buttonEl.textContent = isLight ? "Light" : "Dark";
-    buttonEl.title = isLight ? "Switch to dark mode" : "Switch to light mode";
-    buttonEl.setAttribute("aria-pressed", String(isLight));
+function setView(mode){
+  currentView = mode; localStorage.setItem("viewMode", mode);
+  if (mode==="list"){
+    viewListBtn.classList.add("active"); viewListBtn.setAttribute("aria-pressed","true");
+    viewCardsBtn.classList.remove("active"); viewCardsBtn.setAttribute("aria-pressed","false");
+  } else {
+    viewCardsBtn.classList.add("active"); viewCardsBtn.setAttribute("aria-pressed","true");
+    viewListBtn.classList.remove("active"); viewListBtn.setAttribute("aria-pressed","false");
   }
+  if (window.__picks) renderCards(window.__picks);
 }
-function initThemeToggle(){
-  const btn = document.querySelector("#themeToggle");
-  if (!btn) return;
-  const saved = localStorage.getItem("theme") || "dark";
-  setTheme(saved, btn);
-  btn.addEventListener("click", () => {
-    const next = document.documentElement.getAttribute("data-theme") === "light" ? "dark" : "light";
-    setTheme(next, btn);
-  });
-}
-function setYear(){ const y=document.querySelector("#year"); if (y) y.textContent = String(new Date().getFullYear()); }
 
 async function loadCSV(url){
   const text = await fetch(url, {cache:"no-store"}).then(r=>r.text());
   return new Promise(resolve=>{
-    Papa.parse(text, { header:true, skipEmptyLines:true, complete: r => resolve(r.data) });
+    Papa.parse(text, { header:true, skipEmptyLines:true, complete: (parsed) => {
+      const rows = parsed.data.map((row,i)=>{ row._idx=i; return row; });
+      resolve(rows);
+    }});
   });
 }
 
+async function init(){
+  document.getElementById("year").textContent=new Date().getFullYear();
+  initThemeToggle();
+
+  viewCardsBtn.addEventListener("click",()=>setView("cards"));
+  viewListBtn.addEventListener("click",()=>setView("list"));
+  setView(currentView==="list" ? "list" : "cards");
+
+  const [defs, rows] = await Promise.all([
+    fetch(SPOTLIGHT_URL, {cache:"no-store"}).then(r=>r.json()),
+    loadCSV(CSV_URL),
+  ]);
+
+  const cyclers = defs.filter(d => d.cycle);
+  let cur = defs[0];
+  const reqKey = (new URLSearchParams(location.search)).get("key");
+  if (reqKey){ cur = defs.find(d => d.key === reqKey) || cur; }
+  else if (cyclers.length){ cur = cyclers[isoWeek() % cyclers.length]; }
+
+  renderHero(cur);
+  renderSwitch(defs, cur);
+  window.__picks = selectGames(cur, rows);
+  const meta = $("#resultsMeta"); if (meta) meta.textContent = `${window.__picks.length} featured games`;
+  renderCards(window.__picks);
+}
+
 function renderHero(def){
-  const box = document.querySelector("#hero"); if (!box) return;
+  const box = $("#hero"); if (!box) return;
   box.innerHTML = "";
   const figure = document.createElement("figure");
   const img = document.createElement("img");
-  img.className = "img";
-  img.src = def.hero;
-  img.alt = def.alt || def.title || "Spotlight image";
-  img.loading = "eager";
+  img.className = "img"; img.src = def.hero; img.alt = def.alt || def.title || "Spotlight image"; img.loading="eager";
   figure.appendChild(img);
-  if (def.credit){
-    const cap = document.createElement("figcaption");
-    cap.className = "credit";
-    cap.textContent = def.credit;
-    figure.appendChild(cap);
-  }
-  const h2 = document.createElement("h2"); h2.textContent = def.title;
-  const p  = document.createElement("p");  p.innerHTML = mdToHtml(def.intro);
-  box.append(figure, h2, p);
+  if (def.credit){ const cap=document.createElement("figcaption"); cap.className="credit"; cap.textContent=def.credit; figure.appendChild(cap); }
+  const h2=document.createElement("h2"); h2.textContent=def.title;
+  const p=document.createElement("p"); p.innerHTML=mdToHtml(def.intro);
+  box.append(figure,h2,p);
 }
 
 function renderSwitch(defs, current){
-  const pager = document.querySelector("#pager"); if (!pager) return;
+  const pager = $("#pager"); if (!pager) return;
   pager.innerHTML = "";
   defs.forEach(d=>{
     const a = document.createElement("a");
@@ -96,8 +88,8 @@ function renderSwitch(defs, current){
 }
 
 function selectGames(def, rows){
-  const out=[]; const seen = new Set();
-  const push = (row)=>{ const k = gameKey(row); if(!seen.has(k)){ seen.add(k); out.push(row); } };
+  const out=[]; const seen=new Set();
+  const push=(row)=>{ const k=gameKey(row); if(!seen.has(k)){ seen.add(k); out.push(row); } };
 
   (def.curated||[]).forEach(c=>{
     const row = rows.find(r =>
@@ -135,59 +127,103 @@ function selectGames(def, rows){
 }
 
 function renderCards(rows){
-  const cardsEl = document.querySelector("#cards"); if (!cardsEl) return;
+  const asList = currentView === "list";
+  cardsEl.classList.toggle("list", asList);
   cardsEl.innerHTML = "";
   const frag = document.createDocumentFragment();
+  for (const r of rows) {
+    const li = document.createElement("article");
+    li.className = "card";
+    li.setAttribute("role", "listitem");
 
-  rows.forEach(r=>{
-    const title     = (r["Game Title"]||"Untitled").trim();
-    const designer  = (r["Designer"]||"").trim();
-    const mechanism = (r["Main Mechanism"]||"").trim();
-    const shortDesc = (r["One-Sentence Short Description"]||"").trim();
-    const category  = (r["Game Category"]||"").trim();
-    const players   = (r["Number of Players"]||"").trim();
+    const title     = normalizeStr(r["Game Title"]) || "Untitled";
+    const mechanism = normalizeStr(r["Main Mechanism"]);
+    const shortDesc = normalizeStr(r["One-Sentence Short Description"]);
+    const category  = normalizeStr(r["Game Category"]);
+    const players   = normalizeStr(r["Number of Players"]);
+    const imgURL    = getImageUrl(r);
+    const detailsHref = `/game.html?id=${encodeURIComponent(r._idx)}`;
 
-    const card = document.createElement("article");
-    card.className = "card"; card.setAttribute("role","listitem");
+    li.addEventListener("click", (e) => {
+      if (e.target.closest("a")) return;
+      location.href = detailsHref;
+    });
 
-    const imgUrl = getImageUrl(r);
-    if (imgUrl){
-      const tw = document.createElement("div"); tw.className = "thumb";
-      const img = document.createElement("img"); img.src = imgUrl; img.alt = title; img.loading="lazy"; img.decoding="async";
-      tw.appendChild(img);
-      card.appendChild(tw);
+    let thumbWrap = null;
+    if (imgURL) {
+      thumbWrap = document.createElement("div");
+      thumbWrap.className = "thumb";
+      const img = document.createElement("img");
+      img.src = imgURL; img.alt = title; img.loading="lazy"; img.decoding="async"; img.referrerPolicy="no-referrer";
+      img.onerror = () => thumbWrap.remove();
+      thumbWrap.appendChild(img);
     }
 
     const h = document.createElement("h3");
-    const titleLink = document.createElement("a");
-    titleLink.href = (r["Details URL"]||r["BGG Link"]||r["Download Link"]||"#").trim();
-    if (titleLink.href.startsWith("http")) { titleLink.target = "_blank"; titleLink.rel = "noopener"; }
-    titleLink.textContent = title;
-    h.appendChild(titleLink);
+    const hLink = document.createElement("a");
+    hLink.href = detailsHref;
+    hLink.textContent = title;
+    h.appendChild(hLink);
 
-    const subtitle = document.createElement("div"); subtitle.className = "subtitle";
-    subtitle.textContent = [designer, mechanism].filter(Boolean).join(" — ");
-
-    const desc = document.createElement("p"); desc.className = "desc"; desc.textContent = shortDesc;
+    const subtitle = document.createElement("div"); subtitle.className = "subtitle"; subtitle.textContent = mechanism || "—";
+    const desc = document.createElement("div"); desc.className = "desc"; desc.textContent = shortDesc || normalizeStr(r["Long Description"]).slice(0, 180);
 
     const meta = document.createElement("div"); meta.className = "meta";
     if (category) meta.appendChild(badge(category));
     if (players)  meta.appendChild(badge(`${players} players`));
 
     const links = document.createElement("div"); links.className = "links";
-    const dl1 = (r["Download Link"]||"").trim(); const dl2 = (r["Secondary Download Link"]||"").trim();
+    const dl1 = normalizeStr(r["Download Link"]); const dl2 = normalizeStr(r["Secondary Download Link"]);
     if (dl1) links.appendChild(linkBtn(dl1, "Download"));
     if (dl2) links.appendChild(linkBtn(dl2, "Alt link"));
 
-    card.append(h, subtitle);
-    if (shortDesc) card.append(desc);
-    if (meta.childElementCount) card.append(meta);
-    if (links.childElementCount) card.append(links);
+    if (asList) {
+      const body = document.createElement("div");
+      body.className = "list-body";
+      const left = document.createElement("div");
+      left.className = "list-left";
+      left.append(h, subtitle);
+      if (desc.textContent) left.append(desc);
 
-    frag.appendChild(card);
-  });
+      const right = document.createElement("div");
+      right.className = "list-right";
+      if (category) right.appendChild(badge(category));
+      if (players)  right.appendChild(badge(`${players} players`));
 
+      body.append(left, right);
+      if (links && links.childElementCount) {
+        links.classList.add("list-actions");
+        body.append(links);
+      }
+      li.append(body);
+    } else {
+      if (thumbWrap) li.append(thumbWrap);
+      li.append(h, subtitle, desc, meta, links);
+    }
+    frag.appendChild(li);
+  }
   cardsEl.appendChild(frag);
+}
+
+function setTheme(next, buttonEl){
+  document.documentElement.setAttribute("data-theme", next);
+  localStorage.setItem("theme", next);
+  if (buttonEl){
+    const isLight = next === "light";
+    buttonEl.textContent = isLight ? "Light" : "Dark";
+    buttonEl.title = isLight ? "Switch to dark mode" : "Switch to light mode";
+    buttonEl.setAttribute("aria-pressed", String(isLight));
+  }
+}
+function initThemeToggle(){
+  const btn = $("#themeToggle");
+  if (!btn) return;
+  const saved = localStorage.getItem("theme") || "dark";
+  setTheme(saved, btn);
+  btn.addEventListener("click", () => {
+    const next = document.documentElement.getAttribute("data-theme") === "light" ? "dark" : "light";
+    setTheme(next, btn);
+  });
 }
 
 function isoWeek(dt=new Date()){
@@ -195,30 +231,6 @@ function isoWeek(dt=new Date()){
   const dayNum = d.getUTCDay() || 7; d.setUTCDate(d.getUTCDate() + 4 - dayNum);
   const yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
   return Math.ceil(((d - yearStart) / 86400000 + 1)/7);
-}
-
-async function init(){
-  initThemeToggle(); setYear();
-
-  const [defs, rows] = await Promise.all([
-    fetch(SPOTLIGHT_URL, {cache:"no-store"}).then(r=>r.json()),
-    loadCSV(CSV_URL),
-  ]);
-
-  const cyclers = defs.filter(d => d.cycle);
-  let cur = defs[0];
-  const reqKey = (new URLSearchParams(location.search)).get("key");
-  if (reqKey){
-    cur = defs.find(d => d.key === reqKey) || cur;
-  } else if (cyclers.length){
-    cur = cyclers[isoWeek() % cyclers.length];
-  }
-
-  renderHero(cur);
-  renderSwitch(defs, cur);
-  const picks = selectGames(cur, rows);
-  const meta = document.querySelector("#resultsMeta"); if (meta) meta.textContent = `${picks.length} featured games`;
-  renderCards(picks);
 }
 
 init().catch(console.error);
