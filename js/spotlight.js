@@ -144,11 +144,11 @@ function renderCards(rows){
     const imgURL    = getImageUrl(r);
     const detailsHref = `/game.html?id=${encodeURIComponent(r._idx)}`;
 
-    li.addEventListener("click", (e) => {
-      if (e.target.closest("a")) return;
-      location.href = detailsHref;
-    });
+    // Make entire card clickable, but allow inner links to work
+    li.addEventListener("click", (e) => { if (e.target.closest("a")) return; location.href = detailsHref; });
+    li.classList.add("is-clickable");
 
+    // Thumbnail
     let thumbWrap = null;
     if (imgURL) {
       thumbWrap = document.createElement("div");
@@ -178,42 +178,30 @@ function renderCards(rows){
     if (dl2) links.appendChild(linkBtn(dl2, "Alt link"));
 
     if (asList) {
+      if (thumbWrap) li.append(thumbWrap);
+
+      // right-side content column
       const body = document.createElement("div");
       body.className = "list-body";
-      const left = document.createElement("div");
-      left.className = "list-left";
-      left.append(h, subtitle);
-      if (desc.textContent) left.append(desc);
 
-      const right = document.createElement("div");
-      right.className = "list-right";
-      if (category) right.appendChild(badge(category));
-      if (players)  right.appendChild(badge(`${players} players`));
+      const header = document.createElement("div");
+      header.className = "list-header";
+      header.append(h, subtitle);
+      body.append(header);
 
-      body.append(left, right);
-      if (links && links.childElementCount) {
-        links.classList.add("list-actions");
-        body.append(links);
-      }
+      if (desc.textContent) body.append(desc);
+      if (meta.childElementCount) body.append(meta);
+      if (links && links.childElementCount) { links.classList.add("list-actions"); body.append(links); }
+
       li.append(body);
     } else {
       if (thumbWrap) li.append(thumbWrap);
       li.append(h, subtitle, desc, meta, links);
     }
+
     frag.appendChild(li);
   }
   cardsEl.appendChild(frag);
-}
-
-function setTheme(next, buttonEl){
-  document.documentElement.setAttribute("data-theme", next);
-  localStorage.setItem("theme", next);
-  if (buttonEl){
-    const isLight = next === "light";
-    buttonEl.textContent = isLight ? "Light" : "Dark";
-    buttonEl.title = isLight ? "Switch to dark mode" : "Switch to light mode";
-    buttonEl.setAttribute("aria-pressed", String(isLight));
-  }
 }
 function initThemeToggle(){
   const btn = $("#themeToggle");
