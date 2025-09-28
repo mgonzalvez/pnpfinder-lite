@@ -7,7 +7,7 @@
   <meta name="color-scheme" content="dark light" />
   <link rel="stylesheet" href="/css/style.css" />
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js" defer></script>
-  <script type="module" src="/js/spotlight.js" defer></script>
+  <script src="/js/spotlight.js" defer></script>
 </head>
 <body>
   <header class="site-header wrap" role="banner">
@@ -32,7 +32,8 @@
       </div>
     </div>
   </header>
-  <main id="main" class="wrap" role="main" aria-busy="true">
+  <main id="main" class="wrap" role="main">
+    <div id="errorBanner" class="notice" role="alert" hidden></div>
     <section id="hero" class="spot-hero" aria-live="polite"></section>
     <div id="resultsMeta" class="results-meta" aria-live="polite"></div>
     <section id="cards" class="cards" role="list"></section>
