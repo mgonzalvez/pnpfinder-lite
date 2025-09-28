@@ -631,16 +631,17 @@ a:focus-visible, button:focus-visible, select:focus-visible, input:focus-visible
 .spot-switch a { padding:.25rem .6rem; border:1px solid var(--border,#ddd); border-radius:.6rem; text-decoration:none; }
 .spot-switch a.active { background:#000; color:#fff; border-color:#000; }
 
-/* Accessible links in dark mode */
-:root[data-theme="dark"] a,
-:root[data-theme="dark"] .spot-hero a,
-:root[data-theme="dark"] .cards a {
-  color: #6bb3ff;            /* AA+ on black */
+/* Accessible links in dark mode, excluding buttons */
+:root[data-theme="dark"] a:not(.btn),
+:root[data-theme="dark"] .spot-hero a:not(.btn),
+:root[data-theme="dark"] .cards a:not(.btn) {
+  color: #6bb3ff;
   text-decoration-color: rgba(107,179,255,.5);
 }
-:root[data-theme="dark"] a:hover,
-:root[data-theme="dark"] .spot-hero a:hover,
-:root[data-theme="dark"] .cards a:hover {
+:root[data-theme="dark"] a:not(.btn):hover,
+:root[data-theme="dark"] .spot-hero a:not(.btn):hover,
+:root[data-theme="dark"] .cards a:not(.btn):hover {
   color: #8cc7ff;
   text-decoration-color: rgba(140,199,255,.7);
 }
+
