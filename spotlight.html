@@ -14,8 +14,6 @@
     <div class="brand">
       <h1><a class="brand-link" href="/">PnPFinder</a></h1>
       <p class="tagline">Rotating features highlighting standout PnP categories.</p>
-
-      <!-- Top-level navigation (match other pages) -->
       <nav class="top-nav" aria-label="Primary">
         <a href="/" class="nav-link">Games</a>
         <a href="/tutorials.html" class="nav-link">Tutorials</a>
@@ -24,24 +22,22 @@
         <a href="https://docs.google.com/forms/d/e/1FAIpQLSckXPkwbUa7ctk_u0Bo71YExCaENONEoa8arj1YTFPSH7VDQg/viewform?usp=sf_link" class="nav-link" target="_blank" rel="noopener">Submit</a>
       </nav>
     </div>
-
     <div class="controls">
+      <div class="view-toggle" role="group" aria-label="View mode">
+        <button id="viewCards" class="toggle" aria-pressed="true">Cards</button>
+        <button id="viewList" class="toggle" aria-pressed="false">List</button>
+      </div>
       <div class="theme">
         <button id="themeToggle" class="toggle" aria-pressed="false" title="Switch to light mode">Dark</button>
       </div>
     </div>
   </header>
-
   <main id="main" class="wrap" role="main" aria-busy="true">
     <section id="hero" class="spot-hero" aria-live="polite"></section>
-
     <div id="resultsMeta" class="results-meta" aria-live="polite"></div>
-
     <section id="cards" class="cards" role="list"></section>
-
     <nav id="pager" class="pager" aria-label="Category switch"></nav>
   </main>
-
   <footer class="site-footer wrap">
     <small>© <span id="year"></span> PnPFinder</small>
   </footer>
