@@ -16,7 +16,7 @@
           "in-hand games"
         ]
       ],
-      "limit": 16,
+      "limit": 25,
       "sort": "downloads_desc"
     },
     "curated": []
@@ -38,7 +38,7 @@
           "Deck Building"
         ]
       ],
-      "limit": 16,
+      "limit": 25,
       "sort": "downloads_desc"
     },
     "curated": []
