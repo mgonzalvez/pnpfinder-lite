@@ -42,5 +42,27 @@
       "sort": "downloads_desc"
     },
     "curated": []
+  },
+  {
+    "key": "worker-placement",
+    "title": "Worker Placement Games",
+    "cycle": true,
+    "intro": "I didn't really understand the appeal of worker placement games when I first tried one. My first PnP worker placement game was [Mint Works](https://pnpfinder-lite.pages.dev/game?id=307) by Justin Blaske. It was a cute theme, but I was horrible at the game. After that I tried the free PnP of [Grease Monkey Garage](https://pnpfinder-lite.pages.dev/game?id=483), and again, I thought the game had a good theme, but the main mechanism left me cold. After that, I tried the PnP of the game [Maquis](https://pnpfinder-lite.pages.dev/game?id=59), designed by Jake Staines, with art by the great Ilya Baranovsky. Finally, I understood the worker placement mechanism. It's a staple mechanism of many Euro games, which can at times feel dry and abstract, hence the expression JASE (Just Another Soulless Euro). If one is used to more thematic games, the worker placement mechanism in many Euro games can feel dry and soulless. On the other hand, there are many other gamers for whom that supposedly dry and soulless worker placement mechanism can feel soothing and cozy. As I progressed in my board gaming journey, I came to appreciate the worker placement mechanism more and more. Nowadays, some of my favorite games have worker placement as their main mechanism. There is something pure and deeply satisfying about placing your worker on a spot on the board, and getting a benefit, or triggering an action, or my favorite, triggering a long chain of combo actions that require planning and forethought to pull off. I even ended up designing my very own free PnP post-apocalyptic worker placement game a couple of years ago: [Do Not Go Gentle](https://pnpfinder-lite.pages.dev/game?id=109), and in my conceit, I think it's one of the best games that I have ever designed. The moral of this story? Don't close the door on a game mechanism, that initially didn't appeal to you. It might end up becoming one of your favorites in the fullness of time. -- *Martin Gonzalvez*",
+    "hero": "/img/spotlight/workerplacement.png",
+    "alt": "A meeple and images of popular PnP worker placement games",
+    "credit": "",
+    "select": {
+      "mode": "query",
+      "where": [
+        [
+          "Main Mechanism",
+          "equals",
+          "Worker Placement"
+        ]
+      ],
+      "limit": 25,
+      "sort": "downloads_desc"
+    },
+    "curated": []
   }
 ]
