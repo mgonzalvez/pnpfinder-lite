@@ -17,7 +17,7 @@
         ]
       ],
       "limit": 25,
-      "sort": "downloads_desc"
+      "sort": "recent_desc"
     },
     "curated": []
   },
@@ -39,7 +39,7 @@
         ]
       ],
       "limit": 25,
-      "sort": "downloads_desc"
+      "sort": "recent_desc"
     },
     "curated": []
   },
@@ -61,7 +61,7 @@
         ]
       ],
       "limit": 25,
-      "sort": "downloads_desc"
+      "sort": "recent_desc"
     },
     "curated": []
   },
@@ -83,7 +83,7 @@
         ]
       ],
       "limit": 35,
-      "sort": "downloads_desc"
+      "sort": "recent_desc"
     },
     "curated": []
   },
