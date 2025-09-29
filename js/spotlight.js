@@ -1,48 +1,17 @@
-/* PnPFinder — Spotlight page (CSV-backed via Google Sheets)
- * Drop-in replacement for /js/spotlight.js
- * - Loads Spotlight definitions from a published Google Sheet (CSV)
- * - Renders hero + intro + games using the same card/list UI as the Games page
- * - Supports top and bottom category switchers and weekly rotation
- */
-
 (function(){
-
-  // === Config ===
-  const GAMES_CSV_URL = "data/games.csv"; // your site games data
-  const SPOTLIGHT_CSV_URL =
-    "https://docs.google.com/spreadsheets/d/e/2PACX-1vTzMDg28m0vmjU9CKRH6a02NWp6Y__3Ysr7VnLG5zdmB6-mhFmomCPJa6Zs0FLkPHXaQx34oQmCoH7G/pub?gid=218104593&single=true&output=csv";
-
-  // === DOM helpers & state ===
-  const $ = (s, p=document) => p.querySelector(s);
+  const CSV_URL = "data/games.csv";
+  const SPOTLIGHT_URL = "data/spotlight.json";
   let currentView = localStorage.getItem("viewMode") || "cards";
+  const $ = (s, p=document) => p.querySelector(s);
 
-  // --- Small utilities ---
   function normalizeStr(v){ return (v==null? "": String(v)).trim(); }
-  function slugify(s){
-    return normalizeStr(s).toLowerCase()
-      .normalize('NFKD').replace(/[\u0300-\u036f]/g,'')
-      .replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
-  }
-  function gameKey(row){
-    const title = row["Game Title"] || row["Title"] || row.title || "";
-    const designer = row["Designer"] || row.designer || "";
-    return `game_${slugify(title)}__${slugify(designer)}`;
-  }
+  function slugify(s){ return normalizeStr(s).toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,''); }
+  function gameKey(row){ const title=row["Game Title"]||row["Title"]||row.title||""; const designer=row["Designer"]||row.designer||""; return `game_${slugify(title)}__${slugify(designer)}`; }
   function badge(text){ const b=document.createElement("span"); b.className="badge"; b.textContent=text; return b; }
   function linkBtn(href,label){ const a=document.createElement("a"); a.href=href; a.target="_blank"; a.rel="noopener"; a.textContent=label; return a; }
   function getImageUrl(row){ return normalizeStr(row["Game Image"]) || ""; }
-  function mdToHtml(md){
-    if (!md) return "";
-    let h = md.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
-    h = h
-      .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,'<a href="$2" target="_blank" rel="noopener">$1</a>')
-      .replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>')
-      .replace(/\*([^*]+)\*/g,'<em>$1</em>')
-      .replace(/\n/g,'<br />');
-    return h;
-  }
+  function mdToHtml(md){ if(!md) return ""; let h=md.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); h=h.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,'<a href="$2" target="_blank" rel="noopener">$1</a>').replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>').replace(/\*([^*]+)\*/g,'<em>$1</em>').replace(/\n/g,'<br />'); return h; }
 
-  // --- Theme toggle (mirrors other pages) ---
   function setTheme(next, buttonEl){
     document.documentElement.setAttribute("data-theme", next);
     localStorage.setItem("theme", next);
@@ -63,69 +32,43 @@
       setTheme(next, btn);
     });
   }
+  function setYear(){ const y=$("#year"); if (y) y.textContent = String(new Date().getFullYear()); }
 
-  // --- CSV loader for games (stamps row index for /game.html?id=...) ---
-  async function loadGamesCSV(url){
-    const text = await fetch(url, {cache:"no-store"}).then(r=>r.text());
-    return new Promise(resolve=>{
-      Papa.parse(text, {
-        header:true, skipEmptyLines:true,
-        complete: (parsed) => {
-          const rows = parsed.data.map((row,i)=>{ row._idx=i; return row; });
-          resolve(rows);
-        }
+  // Robust CSV loader (uses Papa if available; else minimal parser)
+  async function loadCSV(url){
+    const text = await fetch(url, {cache:"no-store"}).then(r=>{
+      if (!r.ok) throw new Error(`Failed to load ${url} (${r.status})`);
+      return r.text();
+    });
+    if (window.Papa){
+      return new Promise(resolve=>{
+        window.Papa.parse(text, {
+          header:true, skipEmptyLines:true,
+          complete: (parsed) => {
+            const rows = parsed.data.map((row,i)=>{ row._idx=i; return row; });
+            resolve(rows);
+          }
+        });
       });
-    });
-  }
-
-  // --- Google Sheet CSV adapter for Spotlight definitions ---
-  function toBool(v){ return String(v||"").trim().toLowerCase()==="true"; }
-  function parseCurated(s){
-    const out=[]; (String(s||"").split(";")).forEach(pair=>{
-      const [t,d] = pair.split("::").map(x=> (x||"").trim());
-      if (t && d) out.push({ title:t, designer:d });
-    }); return out;
-  }
-  function buildWhere(row){
-    const blocks=[];
-    for (let i=1;i<=3;i++){
-      const col = row[`where${i}_col`], op = row[`where${i}_op`], val = row[`where${i}_val`];
-      if (col && op && val) blocks.push([col.trim(), op.trim(), val.trim()]);
     }
-    return blocks;
-  }
-  async function loadSpotlightDefsFromCSV(url){
-    const text = await fetch(url, {cache:"no-store"}).then(r=>r.text());
-    const rows = await new Promise(resolve=>{
-      Papa.parse(text, { header:true, skipEmptyLines:true, complete: r=>resolve(r.data) });
+    // Fallback: very simple CSV (handles commas but not quotes/newlines-in-cells)
+    const [headerLine, ...lines] = text.trim().split(/\r?\n/);
+    const headers = headerLine.split(",").map(h=>h.trim());
+    const rows = lines.map((ln,i)=>{
+      const cells = ln.split(","); const row = {};
+      headers.forEach((h,idx)=> row[h]=cells[idx]||"");
+      row._idx = i;
+      return row;
     });
-    return rows
-      .filter(r => r.key && r.title)
-      .map(r => ({ 
-        key: r.key.trim(),
-        title: r.title.trim(),
-        cycle: toBool(r.cycle),
-        intro: r.intro || "",
-        hero: r.hero || "",
-        alt: r.alt || "",
-        credit: r.credit || "",
-        select: {
-          mode: r.select_mode || "query",
-          where: buildWhere(r),
-          limit: parseInt(r.limit||"16",10),
-          sort: r.sort || "downloads_desc"
-        },
-        curated: parseCurated(r.curated)
-      }));
+    return rows;
   }
 
-  // --- Spotlight UI rendering ---
   function renderHero(def){
     const box = $("#hero"); if (!box) return;
     box.innerHTML = "";
     const figure = document.createElement("figure");
     const img = document.createElement("img");
-    img.className = "img"; img.src = def.hero; img.alt = def.alt || def.title || "Spotlight image"; img.loading = "eager";
+    img.className = "img"; img.src = def.hero; img.alt = def.alt || def.title || "Spotlight image"; img.loading="eager";
     figure.appendChild(img);
     if (def.credit){ const cap=document.createElement("figcaption"); cap.className="credit"; cap.textContent=def.credit; figure.appendChild(cap); }
     const h2=document.createElement("h2"); h2.textContent=def.title;
@@ -133,31 +76,15 @@
     box.append(figure,h2,p);
   }
 
-  function ensureTopPager(){
-    let pagerTop = document.querySelector("#pagerTop");
-    const hero = document.querySelector("#hero");
-    if (!pagerTop && hero && hero.parentElement){
-      pagerTop = document.createElement("nav");
-      pagerTop.id = "pagerTop";
-      pagerTop.className = "pager";
-      pagerTop.setAttribute("aria-label","Category switch (top)");
-      hero.parentElement.insertBefore(pagerTop, hero);
-    }
-    return pagerTop;
-  }
-
   function renderSwitch(defs, current){
-    const containers = [ ensureTopPager(), document.querySelector("#pager") ];
-    containers.forEach(pager => {
-      if (!pager) return;
-      pager.innerHTML = "";
-      defs.forEach(d=>{
-        const a = document.createElement("a");
-        a.href = `spotlight.html?key=${encodeURIComponent(d.key)}`;
-        a.textContent = d.title;
-        a.className = "page-btn" + (d.key===current.key ? " active" : "");
-        pager.appendChild(a);
-      });
+    const pager = $("#pager"); if (!pager) return;
+    pager.innerHTML = "";
+    defs.forEach(d=>{
+      const a = document.createElement("a");
+      a.href = `spotlight.html?key=${encodeURIComponent(d.key)}`;
+      a.textContent = d.title;
+      a.className = "page-btn" + (d.key===current.key ? " active" : "");
+      pager.appendChild(a);
     });
   }
 
@@ -200,22 +127,9 @@
     return out.slice(0, lim);
   }
 
-  function setView(mode){
-    currentView = mode; localStorage.setItem("viewMode", mode);
-    const viewCardsBtn = $("#viewCards"); const viewListBtn = $("#viewList");
-    if (mode==="list"){
-      viewListBtn?.classList.add("active"); viewListBtn?.setAttribute("aria-pressed","true");
-      viewCardsBtn?.classList.remove("active"); viewCardsBtn?.setAttribute("aria-pressed","false");
-    } else {
-      viewCardsBtn?.classList.add("active"); viewCardsBtn?.setAttribute("aria-pressed","true");
-      viewListBtn?.classList.remove("active"); viewListBtn?.setAttribute("aria-pressed","false");
-    }
-    if (window.__picks) renderCards(window.__picks);
-  }
-
   function renderCards(rows){
-    const cardsEl = $("#cards"); if (!cardsEl) return;
-    const asList = currentView === "list";
+    const cardsEl = $("#cards");
+    const asList = (localStorage.getItem("viewMode") || "cards") === "list";
     cardsEl.classList.toggle("list", asList);
     cardsEl.innerHTML = "";
     const frag = document.createDocumentFragment();
@@ -288,22 +202,23 @@
   }
 
   function showError(msg){
-    const b = $("#errorBanner");
-    if (b) { b.textContent = msg; b.hidden = false; }
+    const b = $("#errorBanner"); if (!b) return;
+    b.textContent = msg; b.hidden = false;
   }
 
   async function init(){
     try {
-      const yearEl = $("#year"); if (yearEl) yearEl.textContent = new Date().getFullYear();
+      const viewCardsBtn = $("#viewCards");
+      const viewListBtn  = $("#viewList");
+      $("#year").textContent = new Date().getFullYear();
       initThemeToggle();
 
-      $("#viewCards")?.addEventListener("click",()=>setView("cards"));
-      $("#viewList")?.addEventListener("click",()=>setView("list"));
-      setView(currentView==="list" ? "list" : "cards");
+      viewCardsBtn.addEventListener("click",()=>{ localStorage.setItem("viewMode","cards"); renderCards(window.__picks||[]); });
+      viewListBtn.addEventListener("click",()=>{ localStorage.setItem("viewMode","list");  renderCards(window.__picks||[]); });
 
       const [defs, rows] = await Promise.all([
-        loadSpotlightDefsFromCSV(SPOTLIGHT_CSV_URL),
-        loadGamesCSV(GAMES_CSV_URL),
+        fetch(SPOTLIGHT_URL, {cache:"no-store"}).then(r=>{ if(!r.ok) throw new Error("Failed to load spotlight.json"); return r.json(); }),
+        loadCSV(CSV_URL),
       ]);
 
       const cyclers = defs.filter(d => d.cycle);
