@@ -1,34 +1,186 @@
-name: Sync Crowdfunding CSV
+name: Sync crowdfunding.csv from Google Sheets (direct commit, normalize from SHEET headers)
 
 on:
   schedule:
-    - cron: "*/30 * * * *"   # every 30 minutes
-  workflow_dispatch: {}
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  SHEETS_CSV_URL: "https://docs.google.com/spreadsheets/d/e/2PACX-1vTzMDg28m0vmjU9CKRH6a02NWp6Y__3Ysr7VnLG5zdmB6-mhFmomCPJa6Zs0FLkPHXaQx34oQmCoH7G/pub?gid=267029151&single=true&output=csv"
+
+  # Canonical column order used by the site (what we commit to the repo)
+  # Matches your current Sheet exactly (no Late Pledge Link, no Tags)
+  REQUIRED_HEADER: "Title,Designer/Publisher,Platform,Short Description,Long Description,Campaign Link,Launch Date,End Date,Image"
 
 jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Install tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y dos2unix python3
 
       - name: Download published CSV
         run: |
           mkdir -p data
-          curl -fsSL "$CSV_URL" -o data/crowdfunding.src.csv
+          curl -sSL "$SHEETS_CSV_URL" -o data/crowdfunding.source.csv
+          dos2unix data/crowdfunding.source.csv || true
+          # strip UTF-8 BOM if present
+          sed -i '1s/^\xEF\xBB\xBF//' data/crowdfunding.source.csv
+          echo "SOURCE header:"
+          head -n 1 data/crowdfunding.source.csv
 
-      - name: Normalize header BOM/whitespace
+      - name: Normalize headers from SHEET to canonical
         run: |
-          awk 'NR==1{gsub(/^\xef\xbb\xbf/,""); for(i=1;i<=NF;i++){gsub(/^[ \t]+|[ \t]+$/,"",$i)} }1' FS=',' OFS=',' data/crowdfunding.src.csv > data/crowdfunding.csv
+          python3 - << 'PY'
+          import csv, re
 
-      - name: Commit if changed
+          SRC = "data/crowdfunding.source.csv"
+          OUT = "data/crowdfunding.normalized.csv"
+
+          # Canonical order (matches your Sheet exactly)
+          CANON = [
+            "Title",
+            "Designer/Publisher",
+            "Platform",
+            "Short Description",
+            "Long Description",
+            "Campaign Link",
+            "Launch Date",
+            "End Date",
+            "Image",
+          ]
+
+          def norm(s):
+            return re.sub(r"[^a-z0-9]+"," ", (s or "").strip().lower()).strip()
+
+          # Accept common variants but write in the exact CANON names above
+          ALIASES = {
+            # Title
+            norm("Title"): "Title",
+            norm("Campaign Title"): "Title",
+            norm("Project Title"): "Title",
+
+            # Designer/Publisher
+            norm("Designer/Publisher"): "Designer/Publisher",
+            norm("Designer"): "Designer/Publisher",
+            norm("Publisher"): "Designer/Publisher",
+            norm("Creator"): "Designer/Publisher",
+
+            # Platform
+            norm("Platform"): "Platform",
+
+            # Short Description
+            norm("Short Description"): "Short Description",
+            norm("One-Sentence Short Description"): "Short Description",
+
+            # Long Description
+            norm("Long Description"): "Long Description",
+            norm("Campaign Description"): "Long Description",
+
+            # Campaign Link
+            norm("Campaign Link"): "Campaign Link",
+            norm("Project Link"): "Campaign Link",
+            norm("Project URL"): "Campaign Link",
+            norm("Link"): "Campaign Link",
+
+            # Dates (keep sheet's simple labels)
+            norm("Launch Date"): "Launch Date",
+            norm("Start Date"): "Launch Date",
+            norm("End Date"): "End Date",
+            norm("Deadline"): "End Date",
+
+            # Image
+            norm("Image"): "Image",
+            norm("Campaign Image"): "Image",
+            norm("Cover Image"): "Image",
+          }
+
+          with open(SRC, newline="", encoding="utf-8") as f:
+            r = csv.DictReader(f)
+            src_fields = r.fieldnames or []
+            keymap = {}
+
+            canon_norms = {norm(c): c for c in CANON}
+            for k in src_fields:
+              nk = norm(k)
+              if nk in ALIASES:
+                keymap[k] = ALIASES[nk]
+              elif nk in canon_norms:
+                keymap[k] = canon_norms[nk]
+              else:
+                keymap[k] = None  # unknown/ignored
+
+            rows = list(r)
+
+          # Write with canonical order; fill missing with ""
+          with open(OUT, "w", newline="", encoding="utf-8") as g:
+            w = csv.DictWriter(g, fieldnames=CANON)
+            w.writeheader()
+            for row in rows:
+              outrow = {col: "" for col in CANON}
+              for k, v in row.items():
+                ck = keymap.get(k)
+                if ck in outrow:
+                  outrow[ck] = (v or "").strip()
+              w.writerow(outrow)
+          PY
+          echo "NORMALIZED header:"
+          head -n 1 data/crowdfunding.normalized.csv
+          echo "Rows:"
+          wc -l data/crowdfunding.normalized.csv
+
+      - name: Validate normalized CSV
         run: |
-          if ! git diff --quiet -- data/crowdfunding.csv; then
-            git config user.name  "github-actions[bot]"
-            git config user.email "github-actions[bot]@users.noreply.github.com"
-            git add data/crowdfunding.csv
-            git commit -m "Sync crowdfunding.csv"
-            git push
+          ACT="$(head -n 1 data/crowdfunding.normalized.csv | tr -d '\r')"
+          echo "Normalized header: $ACT"
+          if [ "$ACT" != "$REQUIRED_HEADER" ]; then
+            echo "Normalized header mismatch."
+            exit 1
           fi
-        env:
-          CSV_URL: https://docs.google.com/spreadsheets/d/e/2PACX-1vTzMDg28m0vmjU9CKRH6a02NWp6Y__3Ysr7VnLG5zdmB6-mhFmomCPJa6Zs0FLkPHXaQx34oQmCoH7G/pub?gid=267029151&single=true&output=csv
+          ROWS=$(wc -l < data/crowdfunding.normalized.csv || echo 0)
+          if [ "$ROWS" -lt 2 ]; then
+            echo "No data rows after normalization."
+            exit 1
+          fi
 
+      - name: Detect changes
+        id: diff
+        run: |
+          if [ ! -f data/crowdfunding.csv ]; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+          else
+            if diff -q data/crowdfunding.csv data/crowdfunding.normalized.csv >/dev/null 2>&1; then
+              echo "changed=false" >> $GITHUB_OUTPUT
+            else
+              echo "changed=true" >> $GITHUB_OUTPUT
+            fi
+          fi
+
+      - name: Commit & push (direct)
+        if: steps.diff.outputs.changed == 'true'
+        run: |
+          mv data/crowdfunding.normalized.csv data/crowdfunding.csv
+          git config --global user.name  "pnpfinder-bot"
+          git config --global user.email "bot@users.noreply.github.com"
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          git add data/crowdfunding.csv
+          git fetch origin main
+          git checkout main
+          git pull --rebase origin main || true
+          if git diff --cached --quiet; then
+            echo "Nothing to commit."
+            exit 0
+          fi
+          git commit -m "chore: sync crowdfunding.csv from Google Sheets (normalized from SHEET headers)"
+          git push origin main
