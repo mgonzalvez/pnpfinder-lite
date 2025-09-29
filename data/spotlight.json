@@ -86,5 +86,27 @@
       "sort": "downloads_desc"
     },
     "curated": []
+  },
+  {
+    "key": "dice-placement",
+    "title": "Dice Placement Games",
+    "cycle": true,
+    "intro": "I love dice placement games. There's something very satisfying about rolling dice, then placing your rolled dice in spots on the board or on card to fulfill requirements to do good things (like gain benefits) and make things happen in the game. The first free PnP dice placement game I ever played was [Deep Space D6](https://pnpfinder-lite.pages.dev/game?id=548), designed by Tony Go. In the game you play the captain of a starship facing both external and internal dangers. Your dice represent your crew members. Each turn, you roll your dice and then decide which department of your starship to place them (for example, the Bridge, or Engineering, or Tactical, etc.) where they will do the most good for the current situation. It's fast, it's challenging, and it's a lot of fun. One of my favorite dice placement games is [Fantastic Factories](https://pnpfinder-lite.pages.dev/game?id=191), which I consider to be an all-time PnP classic. You place your dice on basic actions to build out your own factory made up of cards that you purchase from a central market. As you build out your personal tableau of cards, they provide additional spaces for you to place your dice, extending your menu of available actions. The game complexity ramps gently and by the end, you have built out a very satisfying factory complex with personalized capabilities. The last free PnP dice placement game I'll mention is [The Artemis Project](https://pnpfinder-lite.pages.dev/game?id=291), where you lead a team of explorers to a mission to colonize Europa, one of Jupiter's moons. The game features wonderful artwork, and a lovely and creative gameplay loop where you place your dice in various spaces above and below the surface of Europa to perform various tasks and complete thematic missions. If you want to dive deeper into dice placement, a game mechanism that I personally adore, you'll find a humber of worthwhile examples of this mechanism here. -- *Martin Gonzalvez*",
+    "hero": "/img/spotlight/dice_placement.png",
+    "alt": "Text dice placement games with images of pnp dice placement games in the background",
+    "credit": "image credit: Martin Gonzalvez",
+    "select": {
+      "mode": "query",
+      "where": [
+        [
+          "Main Mechanism",
+          "equals",
+          "Dice Placement"
+        ]
+      ],
+      "limit": 30,
+      "sort": "downloads_desc"
+    },
+    "curated": []
   }
 ]
