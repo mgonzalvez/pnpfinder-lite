@@ -1,1 +1,34 @@
+name: Sync Crowdfunding CSV
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"   # every 30 minutes
+  workflow_dispatch: {}
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download published CSV
+        run: |
+          mkdir -p data
+          curl -fsSL "$CSV_URL" -o data/crowdfunding.src.csv
+
+      - name: Normalize header BOM/whitespace
+        run: |
+          awk 'NR==1{gsub(/^\xef\xbb\xbf/,""); for(i=1;i<=NF;i++){gsub(/^[ \t]+|[ \t]+$/,"",$i)} }1' FS=',' OFS=',' data/crowdfunding.src.csv > data/crowdfunding.csv
+
+      - name: Commit if changed
+        run: |
+          if ! git diff --quiet -- data/crowdfunding.csv; then
+            git config user.name  "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add data/crowdfunding.csv
+            git commit -m "Sync crowdfunding.csv"
+            git push
+          fi
+        env:
+          CSV_URL: https://docs.google.com/spreadsheets/d/e/2PACX-1vTzMDg28m0vmjU9CKRH6a02NWp6Y__3Ysr7VnLG5zdmB6-mhFmomCPJa6Zs0FLkPHXaQx34oQmCoH7G/pub?gid=267029151&single=true&output=csv
 
