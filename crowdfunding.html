@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>PnPFinder — Crowdfunding</title>
+  <meta name="color-scheme" content="dark light" />
+  <link rel="stylesheet" href="/css/style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js" defer></script>
+  <script type="module" src="/js/crowdfunding.js" defer></script>
+</head>
+<body>
+  <header class="site-header wrap" role="banner">
+    <div class="brand">
+      <h1><a class="brand-link" href="/">PnPFinder</a></h1>
+      <p class="tagline">Current & upcoming PnP crowdfunding campaigns</p>
+
+      <!-- Top-level navigation -->
+      <nav class="top-nav" aria-label="Primary">
+        <a href="/" class="nav-link">Games</a>
+        <a href="/tutorials.html" class="nav-link">Tutorials</a>
+        <a href="/resources.html" class="nav-link">Resources</a>
+        <a href="/spotlight.html" class="nav-link">Spotlight</a>
+        <a href="/crowdfunding.html" class="nav-link active">Crowdfunding</a>
+        <a href="https://forms.gle/HiKfhBuNMtZQhFKj7" class="nav-link" target="_blank" rel="noopener">Submit</a>
+      </nav>
+    </div>
+
+    <div class="controls">
+      <div class="search">
+        <input id="q" type="search" placeholder="Search title, creator, platform…" aria-label="Search" />
+      </div>
+      <div class="sort">
+        <select id="sortBy" aria-label="Sort results">
+          <option value="relevance">Relevance (CSV order)</option>
+          <option value="launch">Launch soonest</option>
+          <option value="end">Ending soonest</option>
+          <option value="az">A–Z</option>
+        </select>
+      </div>
+      <div class="view-toggle">
+        <button id="viewCards" class="toggle" aria-pressed="true">Cards</button>
+        <button id="viewList" class="toggle" aria-pressed="false">List</button>
+      </div>
+      <div class="theme">
+        <button id="themeToggle" class="toggle" aria-pressed="false" title="Switch to light mode">Dark</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap" id="main" role="main" aria-busy="true">
+    <details class="filters" open>
+      <summary>Filters</summary>
+      <form id="filtersForm">
+        <div class="filters-grid" id="filtersGrid">
+          <!-- JS injects: Status, Platform -->
+        </div>
+        <div class="filter-actions">
+          <button type="button" id="clearFilters" class="secondary">Clear</button>
+          <button type="submit" class="primary">Apply</button>
+        </div>
+      </form>
+    </details>
+
+    <div class="results-meta" id="resultsMeta"></div>
+
+    <section id="cards" class="cards" role="list" aria-live="polite"></section>
+
+    <nav id="pager" class="pager" aria-label="Pagination" hidden>
+      <button class="page-btn" data-page="prev" aria-label="Previous page">Prev</button>
+      <div class="page-numbers" id="pageNumbers"></div>
+      <button class="page-btn" data-page="next" aria-label="Next page">Next</button>
+    </nav>
+  </main>
+
+  <footer class="site-footer wrap">
+    <small>© <span id="year"></span> PnPFinder</small>
+  </footer>
+</body>
+</html>
