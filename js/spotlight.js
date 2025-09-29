@@ -77,16 +77,22 @@
   }
 
   function renderSwitch(defs, current){
-    const pager = $("#pager"); if (!pager) return;
-    pager.innerHTML = "";
-    defs.forEach(d=>{
+    const containers = [$("#pagerTop"), $("#pager")].filter(Boolean);
+    if (!containers.length) return;
+
+  // Render the same set of buttons into each container
+  containers.forEach(container => {
+    container.innerHTML = "";
+    defs.forEach(d => {
       const a = document.createElement("a");
       a.href = `spotlight.html?key=${encodeURIComponent(d.key)}`;
       a.textContent = d.title;
-      a.className = "page-btn" + (d.key===current.key ? " active" : "");
-      pager.appendChild(a);
+      a.className = "page-btn" + (d.key === current.key ? " active" : "");
+      container.appendChild(a);
     });
-  }
+  });
+}
+
 
   function selectGames(def, rows){
     const out=[]; const seen=new Set();
