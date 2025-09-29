@@ -64,5 +64,27 @@
       "sort": "downloads_desc"
     },
     "curated": []
+  },
+  {
+    "key": "retheme",
+    "title": "WFree Print and Play Rethemes",
+    "cycle": true,
+    "intro": "Rethemes are a unique part of the print and play hobby. The motivation behind a retheme is most often along the lines of (thinking to oneself) Hey, that's a great game, but wouldn't it be better if it had a different theme? The first free PnP retheme I ever learned about and crafted was Ricardo Gonzalez's [Mario retheme of Carcassonne](https://pnpfinder-lite.pages.dev/game?id=234); it blew my mind back then that such a thing existed, and it still amazes me even today. Another incredible free PnP retheme that made a huge impression on me was the famed board game artist Kwanchai Moriya's [Neolithic Ops](https://pnpfinder-lite.pages.dev/game?id=358), a prehistoric retheme of Fantasy Flight Games' out-of-print Nexus Ops. Still another wonderful retheme project I stumbled upon on BGG was Marianne Waage's beautiful and thoughtfully made free PnP retheme of [Tiny Epic Galaxies](https://pnpfinder-lite.pages.dev/game?id=195). There exists a vast world of wonderfully creative free PnP retheme projects out there, if you so choose to explore them. -- Martin Gonzalvez",
+    "hero": "/img/spotlight/rethemes.png",
+    "alt": "Text Free print and play rethemes with images of free PnP rethemes in the background",
+    "credit": "image credit: Martin Gonzalvez",
+    "select": {
+      "mode": "query",
+      "where": [
+        [
+          "Curated Lists",
+          "equals",
+          "FREE PNP RETHEMES"
+        ]
+      ],
+      "limit": 25,
+      "sort": "downloads_desc"
+    },
+    "curated": []
   }
 ]
