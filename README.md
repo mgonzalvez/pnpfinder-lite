@@ -1,96 +1,150 @@
-# PnPFinder — Print-and-Play Games
+# PnPFinder.com
 
-[**pnpfinder.com**](http://pnpfinder.com) — a fast, static, community-driven index of print-and-play board games, tutorials, and resources.
+Discover and explore the best **Print-and-Play (PnP)** board games — plus tutorials and community resources — all in a fast, responsive, **static site** built with HTML, CSS, and vanilla JS.
+
+[**Visit PnPFinder.com**](http://pnpfinder.com)
+
+---
 
 ## Build & Data Status
 
 **Automated CSV syncs from Google Sheets → committed to `/data/*.csv`**
 
-- **Games**  
-  [![Games CSV Sync](https://github.com/<user>/<repo>/actions/workflows/sync-games.yml/badge.svg)](https://github.com/mgonzalvez/pnpfinder-lite/actions/workflows/sync-games.yml)
+* **Games**
+  [![Games CSV Sync](https://github.com/<user>/<repo>/actions/workflows/sync-games.yml/badge.svg)](https://github.com/<user>/<repo>/actions/workflows/sync-games.yml)
 
-- **Tutorials**  
-  [![Tutorials CSV Sync](https://github.com/<user>/<repo>/actions/workflows/submit-tutorial.yml/badge.svg)](https://github.com/mgonzalvez/pnpfinder-lite/actions/workflows/submit-tutorial.yml)
+* **Tutorials**
+  [![Tutorials CSV Sync](https://github.com/<user>/<repo>/actions/workflows/submit-tutorial.yml/badge.svg)](https://github.com/<user>/<repo>/actions/workflows/submit-tutorial.yml)
 
-- **Resources**  
-  [![Resources CSV Sync](https://github.com/<user>/<repo>/actions/workflows/submit-resource.yml/badge.svg)](https://github.com/mgonzalvez/pnpfinder-lite/actions/workflows/submit-resource.yml)
+* **Resources**
+  [![Resources CSV Sync](https://github.com/<user>/<repo>/actions/workflows/submit-resource.yml/badge.svg)](https://github.com/<user>/<repo>/actions/workflows/submit-resource.yml)
 
-> Each workflow runs on a schedule (every 30 minutes) and on demand via **Actions → Run workflow**. Workflows normalize headers and commit directly to `main`.
+> Each workflow runs every 30 minutes, and can also be triggered manually in **GitHub Actions → Run workflow**.
 
 ---
 
 ## Overview
 
-- **Static site** (no backend): HTML/CSS/vanilla JS, CSV data via [PapaParse].
-- **Sections:** Games, Tutorials, Resources.
-- **Features:** live search, filters, sort, list/grid toggle, pagination, dark/light theme, accessible UI.
+* **Static site** (no backend): HTML/CSS/JS + [PapaParse] for CSV parsing.
+* **Sections:** Games, Tutorials, Resources, Submit.
+* **Features:**
 
-**Data files (auto-generated):**
-- `data/games.csv`
-- `data/tutorials.csv`
-- `data/resources.csv`
+  * Dark/Light theme toggle (persists in `localStorage`).
+  * Responsive, accessible UI (semantic HTML, ARIA labels, keyboard support).
+  * Instant search with clear (×) button + Esc-to-clear.
+  * Card ↔ List toggle.
+  * Filters with live results + Apply/Clear.
+  * Sorting (A–Z, Relevance, Newest, Creator, Release Year, etc.).
+  * Pagination (25 per page with ellipses).
 
 ---
 
-## Content Submission → Approval → Publish
+## Site Structure
 
-- **Google Forms** feed each Google Sheet’s *Form Responses* tab.  
-- An **Approved (Publish Me)** tab mirrors only vetted rows.  
-- That tab is **Published to the web** as CSV.  
-- GitHub Actions workflows fetch, normalize, and commit to `/data/*.csv`.
+```
+/
+├── index.html                # Games directory
+├── game.html                 # Game detail page (?id=<row index>)
+├── tutorials.html            # Tutorials directory
+├── resources.html            # Resources directory
+├── submit.html               # Submit form (Games / Tutorials / Resources)
+├── css/
+│   └── style.css             # Global dark/light, layout, components
+├── js/
+│   ├── script.js             # Games logic (filters, sort, pager, search)
+│   ├── details.js            # Game details logic
+│   ├── tutorials.js          # Tutorials page logic
+│   ├── resources.js          # Resources page logic
+│   └── submit.js             # Client-side submit validation
+└── data/
+    ├── games.csv             # Auto-generated
+    ├── tutorials.csv         # Auto-generated
+    └── resources.csv         # Auto-generated
+```
 
-**Published CSV sources (examples):**
-- Games: Approved tab → published CSV → `.github/workflows/sync-games.yml`
-- Tutorials: Approved tab → published CSV → `.github/workflows/submit-tutorial.yml`
-- Resources: Approved tab → published CSV → `.github/workflows/submit-resource.yml`
+---
+
+## Data Sources
+
+### Games (`/data/games.csv`)
+
+```
+Game Title, Designer, Publisher, Free or Paid, Price, Number of Players, Playtime, Age Range,
+Theme, Main Mechanism, Secondary Mechanism, Gameplay Complexity, Gameplay Mode, Game Category,
+PnP Crafting Challenge Level, One-Sentence Short Description, Long Description, Download Link,
+Secondary Download Link, Print Components, Other Components, Languages, Release Year, Game Image,
+Curated Lists, Report Dead Link
+```
+
+* Header aliasing supported (e.g. `Title` → `Game Title`).
+* “Game Image” column normalizes Google Drive/Dropbox links automatically.
+
+### Tutorials (`/data/tutorials.csv`)
+
+```
+Component, Title, Creator, Description, Link, Image
+```
+
+* Filter: Component.
+* Sort: Relevance (CSV order), A–Z, Creator.
+
+### Resources (`/data/resources.csv`)
+
+```
+Category, Title, Description, Link, Image, Creator
+```
+
+* Filter: Category.
+* Sort: Relevance, A–Z, Creator.
+* Aliases supported:
+
+  * `Resource Category` → `Category`
+  * `Website/URL` → `Link`
+  * `Image URL/Thumb` → `Image`
+  * `Author/By` → `Creator`
+
+---
+
+## Content Submission
+
+* **Submit form**: `/submit.html` or [Google Form link](https://docs.google.com/forms/d/e/1FAIpQLSckXPkwbUa7ctk_u0Bo71YExCaENONEoa8arj1YTFPSH7VDQg/viewform?usp=sf_link).
+* Form feeds into a Google Sheet → vetted rows moved to an “Approved” tab → published as CSV → GitHub Action fetches and commits to `/data`.
 
 ---
 
 ## Local Development
 
+Run a static server (don’t open with `file://`):
+
 ```bash
-# from repo root
+# Python
 python3 -m http.server 8080
-# then open http://localhost:8080
-````
-
-> Tip: Do a hard refresh if you change CSVs to bypass browser cache.
-
----
-
-## Manually Trigger a Sync
-
-1. Go to **GitHub → Actions**.
-2. Choose the workflow (Games/Tutorials/Resources).
-3. Click **Run workflow**.
-4. Verify a commit landed (e.g., *“chore: sync … CSV …”*).
-5. Your host (Cloudflare Pages/GitHub Pages) redeploys automatically.
-
----
-
-## Project Structure (high-level)
-
-```
-/css/style.css
-/js/script.js           # Games page logic
-/js/tutorials.js        # Tutorials page logic
-/js/resources.js        # Resources page logic
-/data/games.csv         # auto-generated
-/data/tutorials.csv     # auto-generated
-/data/resources.csv     # auto-generated
-index.html
-tutorials.html
-resources.html
-.github/workflows/
-  ├─ sync-games.yml
-  ├─ submit-tutorial.yml
-  └─ submit-resource.yml
+# Node
+npx serve .
 ```
 
+Then open: [http://localhost:8080](http://localhost:8080)
+
 ---
 
-## Credits & License
+## Changelog (Sep 2025)
 
-* Built by the PnP community.
-* © PnPFinder. All rights reserved.
-* Data links may point to third-party sites; trademarks belong to their owners.
+* **Global:** Dark/Light toggle, responsive grid layout, accessible controls.
+* **Games:**
+
+  * New detail page with hero image, Overview, Quick Facts, Components.
+  * Filters: Curated Lists, Crafting Challenge, Players, Playtime, Age, Theme, Mechanisms, Complexity, Mode, Category, Free/Paid, Release Year, Languages.
+  * Improved list layout (title + mechanism + short description).
+* **Tutorials:** Component filter, card/list views, images.
+* **Resources:** Category filter, header aliasing, card/list views, images.
+* **Submit:** Integrated submit page with form validation, Google Form option.
+* **CSS:** Modernized styling (rounded cards, accessible controls, responsive header fixes).
+
+---
+
+## License
+
+© 2025 PnPFinder. All rights reserved.
+No public license is granted. Contact **[help@pnpfinder.com](mailto:help@pnpfinder.com)** for permissions.
+
+---
