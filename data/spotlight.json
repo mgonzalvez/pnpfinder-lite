@@ -108,5 +108,27 @@
       "sort": "recent_desc"
     },
     "curated": []
+  },
+   {
+    "key": "dungeon-crawl",
+    "title": "Dungeon Crawl Games",
+    "cycle": true,
+    "intro": "Print and play games are currently my favorite hobby, and Dungeon Crawlers is my favorite theme. My very first crafted game was [Deck 52: Space Wrecked](https://www.pnpfinder.com/game?id=319), which is a compact sci-fi crawler through a derelict spaceship. You choose a hero and make your way through the ship decks, facing menacing aliens and solving room events, while trying to achieve your mission and escape. What hooked me most about this game was how cool and intriguing it was creating the ship’s deck through cards, which showed my progress and always created an immersive experience for each play, and also the fact the dice rolling mechanism has been replaced with cards. Not long after this first game, I discovered [Desolate](https://www.pnpfinder.com/game?id=194) from Grey Gnome Games, and got immediately hooked with their games and became a fan. Desolate inspired me so much that I went on to craft [Iron Helm](https://www.pnpfinder.com/game?id=167) and [Tin Helm](https://www.pnpfinder.com/game?id=70), which carried that same spirit of tense exploration and unexpected turns. And my next one big love of a game that I crafted (I can say quite successfully 🙂) is [Mindburners](https://www.pnpfinder.com/game?id=311), which I enjoy regularly. What I love most about dungeon crawl games, from big and small developers alike, is the way progress builds right in front of you. With every card flipped, monster faced, encounter solved, the dungeon takes shape, and your hero’s journey makes its way forward to the ultimate goal. And the tactile and visual experience is something that I think cannot be exchanged with something else, for example, like digital counterparts. Another reason why I keep crafting and playing print and play dungeon crawlers is the very enjoyable unpredictability of each run, the way I try various heroes and tactics to achieve my goals in the plays. Plus, each game creator brings their own vision and own style of artwork and design, so that every game, for me, feels like stepping into a brand-new world crafted in someone’s imagination. I’m always very eager to see what new games developers are releasing for boardgames in general, and I'm especially genuinely thrilled whenever they make them available for print and play, as the crafting part of this makes the whole experience so much more enjoyable. I can’t recommend print and play dungeon crawler games enough! They are fun to craft, beautiful to look at, and a ton of fun to play and immerse yourself in new worlds and various themes. Have a great one! -- *Mariano Gutsu*",
+    "hero": "/img/spotlight/dungeon_crawl.png",
+    "alt": "Text dungeon crawl games with images of pnp dungeon crawl games in the background",
+    "credit": "image credit: Martin Gonzalvez",
+    "select": {
+      "mode": "query",
+      "where": [
+        [
+          "Theme",
+          "equals",
+          "Dungeon Crawl"
+        ]
+      ],
+      "limit": 40,
+      "sort": "recent_desc"
+    },
+    "curated": []
   }
 ]
