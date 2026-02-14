@@ -424,6 +424,16 @@ button:focus-visible, .btn:focus-visible { outline: 3px solid var(--focus); outl
   color: var(--muted);
   text-align: center;
 }
+.site-footer small,
+.site-footer .kofi-note {
+  display: block;
+  width: 100%;
+  text-align: center;
+}
+.site-footer .kofi-note {
+  margin: .45rem 0 0;
+  font-size: .95rem;
+}
 
 /* Accessibility helpers */
 .sr-only {
@@ -644,4 +654,3 @@ a:focus-visible, button:focus-visible, select:focus-visible, input:focus-visible
   color: #8cc7ff;
   text-decoration-color: rgba(140,199,255,.7);
 }
-
