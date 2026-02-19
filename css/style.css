@@ -1160,3 +1160,84 @@ button:focus-visible,
     gap: .45rem;
   }
 }
+
+/* ===== Phase 4: accessibility + resilience hardening ===== */
+:where(
+  a,
+  button,
+  summary,
+  input,
+  select,
+  textarea,
+  .page-btn,
+  .page-numbers button
+):focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus) 58%, transparent);
+}
+
+.top-nav .nav-dropdown:focus-within > summary.nav-link {
+  border-color: color-mix(in srgb, var(--accent-2) 45%, var(--border));
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-2) 30%, transparent);
+}
+
+@media (prefers-contrast: more) {
+  :root {
+    --border: color-mix(in srgb, var(--text) 28%, transparent);
+    --muted: color-mix(in srgb, var(--text) 72%, transparent);
+  }
+
+  .top-nav .nav-link,
+  .top-nav .nav-dropdown > summary,
+  .search input,
+  .sort select,
+  .select select,
+  .card,
+  .detail-section,
+  .filters,
+  .page-btn,
+  .page-numbers button {
+    border-width: 2px;
+  }
+
+  .badge {
+    border-width: 2px;
+  }
+}
+
+@media (forced-colors: active) {
+  .top-nav .nav-dropdown > summary,
+  .top-nav .nav-dropdown-item,
+  .top-nav .nav-link,
+  .page-btn,
+  .page-numbers button,
+  button,
+  .btn {
+    forced-color-adjust: auto;
+    border: 1px solid ButtonText;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    transition-duration: 0s !important;
+    animation-duration: 0s !important;
+    scroll-behavior: auto !important;
+  }
+
+  .site-header {
+    backdrop-filter: none;
+  }
+
+  .top-nav .nav-link:hover,
+  .top-nav .nav-dropdown > summary:hover,
+  button.primary:hover,
+  .btn.primary:hover,
+  button.secondary:hover,
+  .btn.secondary:hover,
+  .view-toggle .toggle:hover,
+  .theme .toggle:hover,
+  .card.is-clickable:hover {
+    transform: none !important;
+  }
+}
