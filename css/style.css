@@ -696,3 +696,139 @@ a:focus-visible, button:focus-visible, select:focus-visible, input:focus-visible
   color: #8cc7ff;
   text-decoration-color: rgba(140,199,255,.7);
 }
+
+/* ===== Phase 1: premium theme foundation (tokens + type + spacing) ===== */
+:root {
+  --font-ui: "Manrope", "Avenir Next", "Segoe UI", "Inter", system-ui, -apple-system, sans-serif;
+  --space-1: .35rem;
+  --space-2: .6rem;
+  --space-3: .9rem;
+  --space-4: 1.2rem;
+  --space-5: 1.8rem;
+  --space-6: 2.6rem;
+}
+
+html[data-theme="dark"] {
+  --bg: #0f131b;
+  --bg-elev: #161c27;
+  --card: #1b2331;
+  --border: #2d3748;
+  --text: #edf2fb;
+  --muted: #a7b4c8;
+  --accent: #78d6aa;
+  --accent-2: #68a9ff;
+  --shadow-sm: 0 6px 16px rgba(2, 6, 23, .24);
+  --shadow-md: 0 14px 34px rgba(2, 6, 23, .34);
+}
+
+html[data-theme="light"] {
+  --bg: #f3f6fb;
+  --bg-elev: #ffffff;
+  --card: #ffffff;
+  --border: #dbe4f0;
+  --text: #1a2433;
+  --muted: #5b6779;
+  --accent: #0a9a6a;
+  --accent-2: #2969d8;
+  --shadow-sm: 0 6px 16px rgba(15, 23, 42, .08);
+  --shadow-md: 0 16px 36px rgba(15, 23, 42, .12);
+}
+
+body {
+  font-family: var(--font-ui);
+  line-height: 1.55;
+  background:
+    radial-gradient(900px 500px at 95% -8%, color-mix(in srgb, var(--accent-2) 16%, transparent), transparent 65%),
+    radial-gradient(760px 420px at -8% 12%, color-mix(in srgb, var(--accent) 14%, transparent), transparent 68%),
+    var(--bg);
+}
+
+.wrap {
+  width: min(1200px, 92vw);
+}
+
+.site-header {
+  padding: var(--space-5) 0 var(--space-3);
+}
+
+.brand h1 {
+  letter-spacing: .1px;
+}
+
+.brand .tagline {
+  margin-top: var(--space-1);
+  color: var(--muted);
+}
+
+.filters,
+.card,
+.detail-section,
+.empty-state {
+  border-color: color-mix(in srgb, var(--border) 88%, transparent);
+  box-shadow: var(--shadow-sm);
+}
+
+.filters {
+  margin-top: var(--space-4);
+}
+
+.cards {
+  gap: var(--space-4);
+}
+
+.results-meta {
+  margin: var(--space-3) 0;
+}
+
+.site-footer {
+  margin: var(--space-6) 0 var(--space-6);
+}
+
+/* ===== Phase 1.1: contrast/accessibility tuning ===== */
+html[data-theme="dark"] {
+  --muted: #b8c5d8;
+  --border: #3a465b;
+  --focus: #ffe082;
+}
+
+html[data-theme="light"] {
+  --muted: #4b576a;
+  --border: #c7d3e3;
+  --focus: #8a2e0f;
+}
+
+body {
+  color: var(--text);
+}
+
+.brand .tagline,
+.results-meta,
+.site-footer,
+.select label,
+.facts dt {
+  color: var(--muted);
+}
+
+html[data-theme="light"] a:not(.btn) {
+  color: #1e5fbe;
+  text-decoration-color: rgba(30, 95, 190, .45);
+}
+
+html[data-theme="light"] a:not(.btn):hover {
+  color: #164d9f;
+  text-decoration-color: rgba(22, 77, 159, .6);
+}
+
+.top-nav .nav-link,
+.top-nav .nav-dropdown > summary {
+  border-color: var(--border);
+}
+
+.top-nav .nav-dropdown-menu {
+  background: color-mix(in srgb, var(--card) 95%, var(--bg-elev));
+  border-color: var(--border);
+}
+
+.top-nav .nav-dropdown-item:hover {
+  background: color-mix(in srgb, var(--accent-2) 16%, var(--bg-elev));
+}

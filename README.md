@@ -1,74 +1,83 @@
 # PnPFinder.com
 
-Discover and explore the best **Print-and-Play (PnP)** board games — plus tutorials and community resources — all in a fast, responsive, **static site** built with HTML, CSS, and vanilla JS.
+PnPFinder is a fast static site for discovering Print-and-Play board games and tutorials.
 
-[**Visit PnPFinder.com**](http://pnpfinder.com)
+Live site: [http://pnpfinder.com](http://pnpfinder.com)
 
----
+## Current Product Scope
 
-## Build & Data Status
+- Core directories:
+  - `Games` (`/`)
+  - `Tutorials` (`/tutorials.html`)
+  - `Spotlight` (`/spotlight.html`)
+  - `Submit` (`/submit.html`)
+- `Resources` on PnPFinder is deprecated.
+  - `/resources.html` now redirects to [https://pnptools.gonzhome.us](https://pnptools.gonzhome.us).
+- Top navigation uses a `Tools` dropdown with external links (new tab):
+  - Launchpad: [https://launchpad.gonzhome.us](https://launchpad.gonzhome.us)
+  - PnPTools: [https://pnptools.gonzhome.us](https://pnptools.gonzhome.us)
+  - Formatter: [https://formatter.gonzhome.us/](https://formatter.gonzhome.us/)
+  - Extractor: [https://extractor.gonzhome.us](https://extractor.gonzhome.us)
 
-**Automated CSV syncs from Google Sheets → committed to `/data/*.csv`**
+## Technical Overview
 
-* **Games**
-  [![Games CSV Sync](https://github.com/<user>/<repo>/actions/workflows/sync-games.yml/badge.svg)](https://github.com/<user>/<repo>/actions/workflows/sync-games.yml)
+- Static frontend only: HTML + CSS + vanilla JS.
+- No runtime backend dependency for page rendering.
+- Data is read from local CSV/JSON files under `/data`.
+- CSV parsing is done client-side with PapaParse.
 
-* **Tutorials**
-  [![Tutorials CSV Sync](https://github.com/<user>/<repo>/actions/workflows/submit-tutorial.yml/badge.svg)](https://github.com/<user>/<repo>/actions/workflows/submit-tutorial.yml)
+## Data Pipeline (Cloudflare)
 
-* **Resources**
-  [![Resources CSV Sync](https://github.com/<user>/<repo>/actions/workflows/submit-resource.yml/badge.svg)](https://github.com/<user>/<repo>/actions/workflows/submit-resource.yml)
+- Source content is maintained in Google Sheets.
+- Cloudflare Workers/Actions automation updates published data files in `/data`.
+- The frontend does not call Google Sheets directly.
+- At runtime, pages only read local files in `/data` (CSV/JSON) and render that content.
 
-> Each workflow runs every 30 minutes, and can also be triggered manually in **GitHub Actions → Run workflow**.
+## Core Features
 
----
+- Dark/light theme toggle (persisted in `localStorage`)
+- Responsive layout and keyboard-accessible controls
+- Search with inline clear behavior
+- Card/list view toggle
+- Filtering + sorting + pagination
+- Game detail page (`/game.html?id=<row-index>`)
 
-## Overview
+## Project Structure
 
-* **Static site** (no backend): HTML/CSS/JS + [PapaParse] for CSV parsing.
-* **Sections:** Games, Tutorials, Resources, Submit.
-* **Features:**
-
-  * Dark/Light theme toggle (persists in `localStorage`).
-  * Responsive, accessible UI (semantic HTML, ARIA labels, keyboard support).
-  * Instant search with clear (×) button + Esc-to-clear.
-  * Card ↔ List toggle.
-  * Filters with live results + Apply/Clear.
-  * Sorting (A–Z, Relevance, Newest, Creator, Release Year, etc.).
-  * Pagination (25 per page with ellipses).
-
----
-
-## Site Structure
-
-```
+```text
 /
 ├── index.html                # Games directory
-├── game.html                 # Game detail page (?id=<row index>)
+├── game.html                 # Game detail page
 ├── tutorials.html            # Tutorials directory
-├── resources.html            # Resources directory
-├── submit.html               # Submit form (Games / Tutorials / Resources)
+├── spotlight.html            # Spotlight content
+├── crowdfunding.html         # Legacy page (no longer primary nav destination)
+├── resources.html            # Redirects to pnptools.gonzhome.us
+├── submit.html               # Submission page
 ├── css/
-│   └── style.css             # Global dark/light, layout, components
+│   └── style.css             # Global styles + themes + nav/dropdown UI
 ├── js/
-│   ├── script.js             # Games logic (filters, sort, pager, search)
-│   ├── details.js            # Game details logic
-│   ├── tutorials.js          # Tutorials page logic
-│   ├── resources.js          # Resources page logic
-│   └── submit.js             # Client-side submit validation
+│   ├── script.js             # Games listing logic
+│   ├── details.js            # Game detail logic
+│   ├── tutorials.js          # Tutorials logic
+│   ├── spotlight.js          # Spotlight logic
+│   ├── crowdfunding.js       # Legacy crowdfunding logic
+│   ├── resources.js          # Legacy resources logic
+│   └── submit.js             # Submit page logic
 └── data/
-    ├── games.csv             # Auto-generated
-    ├── tutorials.csv         # Auto-generated
-    └── resources.csv         # Auto-generated
+    ├── games.csv
+    ├── tutorials.csv
+    ├── resources.csv         # Still present; no longer primary site section
+    ├── crowdfunding.csv
+    └── spotlight.json
 ```
 
----
+## Data Files Used by the Frontend
 
-## Data Sources
+### `data/games.csv`
 
-### Games (`/data/games.csv`)
+Expected columns:
 
-```
+```text
 Game Title, Designer, Publisher, Free or Paid, Price, Number of Players, Playtime, Age Range,
 Theme, Main Mechanism, Secondary Mechanism, Gameplay Complexity, Gameplay Mode, Game Category,
 PnP Crafting Challenge Level, One-Sentence Short Description, Long Description, Download Link,
@@ -76,75 +85,48 @@ Secondary Download Link, Print Components, Other Components, Languages, Release 
 Curated Lists, Report Dead Link
 ```
 
-* Header aliasing supported (e.g. `Title` → `Game Title`).
-* “Game Image” column normalizes Google Drive/Dropbox links automatically.
+### `data/tutorials.csv`
 
-### Tutorials (`/data/tutorials.csv`)
-
-```
+```text
 Component, Title, Creator, Description, Link, Image
 ```
 
-* Filter: Component.
-* Sort: Relevance (CSV order), A–Z, Creator.
+### `data/spotlight.json`
 
-### Resources (`/data/resources.csv`)
+Used by `spotlight.html` for rotating spotlight content.
 
-```
-Category, Title, Description, Link, Image, Creator
-```
+### Legacy data still present
 
-* Filter: Category.
-* Sort: Relevance, A–Z, Creator.
-* Aliases supported:
+- `data/resources.csv`
+- `data/crowdfunding.csv`
 
-  * `Resource Category` → `Category`
-  * `Website/URL` → `Link`
-  * `Image URL/Thumb` → `Image`
-  * `Author/By` → `Creator`
+## Deployment Notes
 
----
-
-## Content Submission
-
-* **Submit form**: `/submit.html` or [Google Form link](https://docs.google.com/forms/d/e/1FAIpQLSckXPkwbUa7ctk_u0Bo71YExCaENONEoa8arj1YTFPSH7VDQg/viewform?usp=sf_link).
-* Form feeds into a Google Sheet → vetted rows moved to an “Approved” tab → published as CSV → GitHub Action fetches and commits to `/data`.
-
----
+- Keep `/data` as the canonical runtime input for site content.
+- If pipeline logic changes, preserve file names/paths expected by the frontend:
+  - `data/games.csv`
+  - `data/tutorials.csv`
+  - `data/spotlight.json`
 
 ## Local Development
 
-Run a static server (don’t open with `file://`):
+Run a local static server (do not open with `file://`):
 
 ```bash
-# Python
 python3 -m http.server 8080
-# Node
-npx serve .
 ```
 
-Then open: [http://localhost:8080](http://localhost:8080)
+Then open [http://localhost:8080](http://localhost:8080).
 
----
+## Change Safety Rule
 
-## Changelog (Sep 2025)
+When making UI updates, keep changes scoped to presentation only unless explicitly requested:
 
-* **Global:** Dark/Light toggle, responsive grid layout, accessible controls.
-* **Games:**
-
-  * New detail page with hero image, Overview, Quick Facts, Components.
-  * Filters: Curated Lists, Crafting Challenge, Players, Playtime, Age, Theme, Mechanisms, Complexity, Mode, Category, Free/Paid, Release Year, Languages.
-  * Improved list layout (title + mechanism + short description).
-* **Tutorials:** Component filter, card/list views, images.
-* **Resources:** Category filter, header aliasing, card/list views, images.
-* **Submit:** Integrated submit page with form validation, Google Form option.
-* **CSS:** Modernized styling (rounded cards, accessible controls, responsive header fixes).
-
----
+- Avoid changing IDs/classes that JS depends on.
+- Do not alter data file paths under `/data`.
+- Validate Games/Tutorials/Spotlight/Submit behavior after UI edits.
 
 ## License
 
-© 2025 PnPFinder. All rights reserved.
-No public license is granted. Contact **[help@pnpfinder.com](mailto:help@pnpfinder.com)** for permissions.
-
----
+© 2026 PnPFinder. All rights reserved.
+Contact: [help@pnpfinder.com](mailto:help@pnpfinder.com)
