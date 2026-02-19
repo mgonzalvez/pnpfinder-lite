@@ -80,6 +80,48 @@ body {
   border-color: var(--accent-2);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-2) 30%, transparent);
 }
+.top-nav .nav-dropdown {
+  position: relative;
+}
+.top-nav .nav-dropdown > summary {
+  list-style: none;
+  cursor: pointer;
+  user-select: none;
+}
+.top-nav .nav-dropdown > summary::-webkit-details-marker {
+  display: none;
+}
+.top-nav .nav-dropdown[open] > summary {
+  border-color: var(--accent-2);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-2) 30%, transparent);
+}
+.top-nav .nav-dropdown-menu {
+  position: absolute;
+  top: calc(100% + .35rem);
+  left: 0;
+  z-index: 20;
+  min-width: 180px;
+  display: grid;
+  gap: .2rem;
+  padding: .35rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card);
+  box-shadow: var(--shadow);
+}
+.top-nav .nav-dropdown-item {
+  text-decoration: none;
+  color: var(--text);
+  padding: .4rem .55rem;
+  border-radius: 8px;
+}
+.top-nav .nav-dropdown-item:hover {
+  background: color-mix(in srgb, var(--accent-2) 12%, var(--bg-elev));
+}
+.top-nav .nav-dropdown-item:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
 
 .controls {
   display: grid;
