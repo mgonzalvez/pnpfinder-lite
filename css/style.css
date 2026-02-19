@@ -1004,3 +1004,159 @@ button:focus-visible,
     min-height: 40px;
   }
 }
+
+/* ===== Phase 3: content presentation polish (cards/list/detail/pager) ===== */
+.cards {
+  gap: 1.15rem;
+}
+
+.card {
+  padding: 1.05rem;
+  gap: .68rem;
+  border-color: color-mix(in srgb, var(--border) 86%, transparent);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--card) 96%, white 4%), var(--card));
+}
+
+.card h3 {
+  font-size: clamp(1.03rem, .98rem + .35vw, 1.22rem);
+  line-height: 1.3;
+}
+
+.card .subtitle {
+  font-size: .9rem;
+  letter-spacing: .01em;
+}
+
+.card .desc {
+  color: color-mix(in srgb, var(--text) 94%, transparent);
+}
+
+.card .meta {
+  gap: .4rem .55rem;
+}
+
+.badge {
+  font-size: .77rem;
+  font-weight: 600;
+  letter-spacing: .02em;
+  padding: .22rem .55rem;
+}
+
+.card .links {
+  margin-top: .35rem;
+  gap: .45rem;
+}
+
+.card .links a {
+  font-weight: 600;
+}
+
+.list .card {
+  grid-template-columns: 160px 1fr;
+  gap: 1.05rem;
+  padding: .92rem 1rem;
+}
+
+.list .card .thumb {
+  border-radius: 10px;
+}
+
+.list .list-header h3 {
+  font-size: 1.03rem;
+}
+
+.list .desc {
+  font-size: .95rem;
+}
+
+.list .list-actions {
+  margin-top: .35rem;
+}
+
+.pager {
+  margin: 1.35rem 0 2.45rem;
+  gap: .6rem;
+}
+
+.page-btn,
+.page-numbers button {
+  border-radius: 10px;
+  min-height: 38px;
+  font-weight: 600;
+}
+
+.page-numbers button[aria-current="page"] {
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--accent-2) 84%, white 16%),
+    color-mix(in srgb, var(--accent-2) 92%, black 8%)
+  );
+}
+
+.detail {
+  gap: 1.4rem;
+}
+
+.detail-media {
+  gap: .85rem;
+}
+
+.detail-head h2 {
+  font-size: clamp(1.45rem, 1.2rem + 1.2vw, 2.02rem);
+  line-height: 1.2;
+}
+
+.detail-actions {
+  margin-top: .45rem;
+}
+
+.detail-section {
+  padding: 1.08rem 1.12rem;
+}
+
+.detail-section h3 {
+  margin-bottom: .62rem;
+}
+
+.facts dd {
+  color: color-mix(in srgb, var(--text) 96%, transparent);
+}
+
+.empty-state {
+  padding: 1.2rem 1.1rem;
+}
+
+@media (max-width: 860px) {
+  .list .card {
+    grid-template-columns: 132px 1fr;
+    gap: .85rem;
+  }
+
+  .detail-section {
+    padding: .95rem 1rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .cards {
+    gap: .9rem;
+  }
+
+  .card {
+    padding: .92rem;
+  }
+
+  .list .card {
+    grid-template-columns: 1fr;
+    gap: .72rem;
+  }
+
+  .list .card .thumb {
+    aspect-ratio: 16 / 9;
+  }
+
+  .pager {
+    gap: .45rem;
+  }
+}
